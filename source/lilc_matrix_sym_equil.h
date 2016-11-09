@@ -21,13 +21,13 @@ void lilc_matrix<el_type> :: sym_equil() {
 		//assumes indices are ordered. since this procedure is run
 		//before factorization pivots matrix, this is a fair assumption
 		//for most matrix market matrices.
-		for (idx_it it = list[i].begin(); it != list[i].end(); it++) {
+		for (idx_it it = m_list[i].begin(); it != m_list[i].end(); it++) {
 			S[i] = std::max(S[i], abs(coeff(i, *it)));
 		}
 		
 		//S[i] > 0 since its the square root of a +ve number
 		if (S[i] > eps) { 
-			for (idx_it it = list[i].begin(); it != list[i].end(); it++) {
+			for (idx_it it = m_list[i].begin(); it != m_list[i].end(); it++) {
 				coeffRef(i, *it, elem_its);
 				
 				//can use bin. search on coeff since no reordering is done yet.

@@ -29,9 +29,6 @@ DEFINE_string(equil, "bunch", "Decides if the matrix should be equilibriated bef
 		"Options are 'bunch' and 'none'. If the option is 'bunch', the matrix is equilibrated "
 		"with Bunch's algorithm in the max norm. The default is 'bunch'.");
 
-DEFINE_bool(inplace, false, "Decides if the matrix should be factored in place (faster and saves memory, "
-		"at the cost of not being able to use the built-in solver).");
-
 DEFINE_bool(save, true, "If yes, saves the factors (in matrix-market format) into a folder "
 		"called output_matrices/ in the same directory as ldl_driver.");
 
@@ -109,7 +106,6 @@ int main(int argc, char* argv[])
 	}
 
 	solv.set_pivot(FLAGS_pivot.c_str());
-	solv.set_inplace(FLAGS_inplace);
 	solv.solve(FLAGS_fill, FLAGS_tol, FLAGS_pp_tol, FLAGS_max_iters, FLAGS_solver_tol);
 
 	if (FLAGS_save) {

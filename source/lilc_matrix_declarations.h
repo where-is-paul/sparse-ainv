@@ -3,13 +3,15 @@
 #define _LILC_MATRIX_DECLARATIONS_H_
 
 #include <algorithm>
+#include <vector>
+#include <limits>
 #include <cmath>
 #include <cassert>
 #include <iostream>
 #include <iterator>
 #include <set>
 
-#include "swap_struct.h"
+#include <swap_struct.h>
 
 /*! \brief A list-of-lists (LIL) matrix in column oriented format.
 
@@ -18,33 +20,28 @@
 	
 */
 
+using std::vector;
+
 template<class el_type> 
-class lilc_matrix : public lil_sparse_matrix<el_type>
-{
+class lilc_matrix {
 public:
 	
 	//-------------- typedefs and inherited variables --------------//
-	using lil_sparse_matrix<el_type>::m_idx;
-	using lil_sparse_matrix<el_type>::m_x;
-	using lil_sparse_matrix<el_type>::m_n_rows;
-	using lil_sparse_matrix<el_type>::m_n_cols;
-	using lil_sparse_matrix<el_type>::n_rows;
-	using lil_sparse_matrix<el_type>::n_cols;
-	using lil_sparse_matrix<el_type>::nnz;
-	using lil_sparse_matrix<el_type>::nnz_count;
-	using lil_sparse_matrix<el_type>::eps;
-
-
-	typedef typename lil_sparse_matrix<el_type>::idx_vector_type idx_vector_type;
-	typedef typename lil_sparse_matrix<el_type>::elt_vector_type elt_vector_type;
+	typedef vector<int> idx_vector_type;
+	typedef vector<el_type>  elt_vector_type;
 	
 	typedef typename idx_vector_type::iterator idx_it;
 	typedef typename elt_vector_type::iterator elt_it;
 
-	std::vector< std::vector< int > > list;	///<A list of linked lists that gives the non-zero elements in each row of A. Since at any time we may swap between two rows, we require linked lists for each row of A.
-	
-	std::vector<int> row_first;	///<On iteration k, first[i] gives the number of non-zero elements on row i of A before A(i, k).
-    std::vector<int> col_first;	///<On iteration k, first[i] gives the number of non-zero elements on col i of A before A(i, k).
+	int m_n_rows;///<Number of rows in the matrix.
+	int	m_n_cols;///<Number of cols in the matrix.
+	int nnz_count;///<Number of nonzeros in the matrix.
+	el_type eps;///<Machine epsilon for el_type.
+
+	vector<idx_vector_type> m_idx;///<The row/col indices. The way m_idx is used depends on whether the matrix is in LIL-C or LIL-R.
+	vector<elt_vector_type> m_x;///<The values of the nonzeros in the matrix.
+
+	vector<idx_vector_type> m_list;
     
 	block_diag_matrix<el_type> S; ///<A diagonal scaling matrix S such that SAS will be equilibriated in the max-norm (i.e. every row/column has norm 1). S is constructed after running the sym_equil() function, after which SAS will be stored in place of A.
     
@@ -62,13 +59,36 @@ public:
 	
 	/*! \brief Constructor for a column oriented list-of-lists (LIL) matrix. Space for both the values list and the indices list of the matrix is allocated here.
 	*/
-	lilc_matrix (int n_rows = 0, int n_cols = 0): 
-	lil_sparse_matrix<el_type> (n_rows, n_cols) 
-	{
+	lilc_matrix (int n_rows = 0, int n_cols = 0): m_n_rows(n_rows), m_n_cols(n_cols) {
 		m_x.reserve(n_cols);
 		m_idx.reserve(n_cols);
+		m_list.reserve(n_cols);
+
+		nnz_count = 0;
+		eps = std::sqrt(std::numeric_limits<el_type>::epsilon());
 	}
 	
+	/*! \brief Allows outputting the contents of the matrix via << operators. */
+	friend std::ostream & operator<<(std::ostream& os, const lilc_matrix& A) {
+		os << A.to_string();
+		return os;
+	};
+	
+	/*! \return Number of rows in the matrix. */
+	int n_rows() const {
+		return m_n_rows;
+	}
+
+	/*! \return Number of cols in the matrix. */
+	int n_cols() const {
+		return m_n_cols;
+	}
+
+	/*! \return Number of nonzeros in the matrix. */
+	int nnz() const {
+		return nnz_count;
+	};
+
 	//----Matrix referencing/filling----//
 	
 	/*! \brief Finds the (i,j)th coefficient of the matrix.
@@ -77,18 +97,10 @@ public:
 		\param offset an optional search offset for use in linear search (start at offset instead of 0).
 		\return The (i,j)th element of the matrix. 
 	*/
-	inline virtual el_type coeff(const int& i, const int& j, int offset = 0) const 
-	{	
-		//invariant: first elem in each col of a is the diagonal elem if it exists.
-		if (i == j) {
-			if (m_idx[j].size() == 0) return 0;
-			return (m_idx[j][0] == i ? m_x[j][0] : 0);
-		}
-		
-		for (int k = offset, end = m_idx[j].size(); k < end; k++) {
+	inline virtual el_type coeff(const int& i, const int& j) const {			
+		for (int k = 0, end = m_idx[j].size(); k < end; k++) {
 			if (m_idx[j][k] == i) return m_x[j][k];
 		}
-		
 		return 0;
 	}
 	
@@ -101,7 +113,7 @@ public:
 	*/
 	inline bool coeffRef(const int& i, const int& j, std::pair<idx_it, elt_it>& its)
 	{	
-		for (unsigned int k = 0; k < m_idx[j].size(); k++) {
+		for (int k = 0; k < m_idx[j].size(); k++) {
 			if (m_idx[j][k] == i) {
 				its = make_pair(m_idx[j].begin() + k, m_x[j].begin() + k);
 				return true;
@@ -123,23 +135,13 @@ public:
 	
 		m_x.clear();
 		m_idx.clear();
-		row_first.clear();
-		col_first.clear();
-		list.clear();
+		m_list.clear();
 	
 		m_x.resize(n_cols);
 		m_idx.resize(n_cols);
-		
-		row_first.resize(n_cols, 1);
-		col_first.resize(n_cols, 1);
-		list.resize(n_cols);
+		m_list.resize(n_cols);
 		
 		S.resize(n_cols, 1);
-		for (int i = 0; i < n_cols; i++) {
-			m_x[i].clear();
-			m_idx[i].clear();
-			list[i].clear();
-		}
 	}
 	
 	//-----Reorderings/Rescalings------//
@@ -196,18 +198,6 @@ public:
 	*/
 	void ildl(lilc_matrix<el_type>& L, block_diag_matrix<el_type>& D, idx_vector_type& perm, const double& fill_factor, const double& tol, const double& pp_tol, int piv_type = pivot_type::BKP);
 	
-    /*! \brief Performs an _inplace_ LDL' factorization of this matrix. 
-		
-		The pivoted matrix P'AP will be stored in place of A. In addition, the L and D factors of P'AP will be stored in L and D (so that P'AP = LDL'). The factorization is performed in crout order and follows the algorithm outlined in "Crout versions of the ILU factorization with pivoting for sparse symmetric matrices" by Li and Saad (2005).
-	
-		\param D the D factor of this matrix.
-		\param perm the current permutation of A.
-		\param fill_factor a parameter to control memory usage. Each column is guaranteed to have fewer than fill_factor*(nnz(A)/n_col(A)) elements.
-		\param tol a parameter to control agressiveness of dropping. In each column, elements less than tol*norm(column) are dropped.
-	    \param pp_tol a parameter to control aggresiveness of pivoting. Allowable ranges are [0,inf). If the parameter is >= 1, Bunch-Kaufman pivoting will be done in full. If the parameter is 0, partial pivoting will be turned off and the first non-zero pivot under the diagonal will be used. Choices close to 0 increase locality in pivoting (pivots closer to the diagonal are used) while choices closer to 1 increase the stability of pivoting. Useful for situations where you care more about preserving the structure of the matrix rather than bounding the size of its elements.
-	*/
-	void ildl_inplace(block_diag_matrix<el_type>& D, idx_vector_type& perm, const double& fill_factor, const double& tol, const double& pp_tol, int piv_type = pivot_type::BKP);
-    
 	//------Helpers------//
 	/*! \brief Performs a back solve of this matrix, assuming that it is lower triangular (stored column major). 
 		
@@ -279,70 +269,6 @@ public:
     */
 	inline void pivotA(swap_struct<el_type>& s, vector<bool>& in_set, const int& k, const int& r);
 	
-	/*! \brief Ensures two the invariants observed by A.first and A.list are held.
-		
-		\invariant
-		If this matrix is a lower triangular factor of another matrix:
-			-# On iteration k, first[i] will give the number of non-zero elements on col i of A before A(k, i).
-			-# On iteration k, list[i][ first[i] ] will contain the first element below or on index k of column i of A.
-		
-		\invariant
-		If this matrix is the matrix to be factored:
-			-# On iteration k, first[i] will give the number of non-zero elements on row i of A before A(i, k).
-			-# On iteration k, list[i][ first[i] ] will contain the first element right of or on index k of row i of A.
-			
-		\param j the column of con.
-		\param k the iteration number.
-		\param con the container to be swapped.
-		\param update_list boolean indicating whether list or m_x/m_idx should be updated.
-	*/
-	template <class Container>
-	inline void ensure_invariant(const int& j, const int& k, Container& con, bool update_list = false) {
-		int offset;
-        if (update_list) offset = row_first[j];
-        else offset = col_first[j];
-        
-		if ((offset >= (int) con.size()) || con.empty() || con[offset] == k) return;
-		
-		int i, min(offset);
-		for (i = offset; i < (int) con.size(); i++) {
-			if (con[i] == k) {
-				min = i; 
-				break;
-			} else if ( con[i] < con[min] ) {
-				min = i;
-			}
-		}
-		
-		if (update_list)
-			std::swap(con[offset], con[min]);
-		else {
-			std::swap(con[offset], con[min]);
-			std::swap(m_x[j][offset], m_x[j][min]);
-		}
-	}
-	
-	/*! \brief Updates A.first for iteration k.
-		\param k current iteration index.	
-	*/
-	inline void advance_first(const int& k) {
-		for (idx_it it = list[k].begin(); it != list[k].end(); it++) {	
-			ensure_invariant(*it, k, m_idx[*it]); //make sure next element is good before we increment.
-			col_first[*it]++; //should have ensured invariant now
-		}
-	}
-	
-	/*! \brief Updates A.list for iteration k.
-		\param k current iteration index.	
-	*/
-	inline void advance_list(const int& k) {
-		for (idx_it it = m_idx[k].begin(); it != m_idx[k].end(); it++) {
-            if (*it == k) continue;
-			ensure_invariant(*it, k, list[*it], true); //make sure next element is good.
-            row_first[*it]++; //invariant ensured.
-		}			
-	}
-	
 	//----IO Functions----//
 	
 	/*! \brief Returns a string representation of A, with each column and its corresponding indices & non-zero values printed.
@@ -381,18 +307,17 @@ public:
 
 //------------------ include files for class functions -------------------//
 
-#include "lilc_matrix_find_level_set.h"
-#include "lilc_matrix_find_root.h"
-#include "lilc_matrix_sym_rcm.h"
-#include "lilc_matrix_sym_amd.h"
-#include "lilc_matrix_sym_perm.h"
-#include "lilc_matrix_sym_equil.h"
-#include "lilc_matrix_ildl_helpers.h"
-#include "lilc_matrix_ildl.h"
-#include "lilc_matrix_ildl_inplace.h"
-#include "lilc_matrix_pivot.h"
-#include "lilc_matrix_load.h"
-#include "lilc_matrix_save.h"
-#include "lilc_matrix_to_string.h"
+#include <lilc_matrix_find_level_set.h>
+#include <lilc_matrix_find_root.h>
+#include <lilc_matrix_sym_rcm.h>
+#include <lilc_matrix_sym_amd.h>
+#include <lilc_matrix_sym_perm.h>
+#include <lilc_matrix_sym_equil.h>
+#include <lilc_matrix_ildl_helpers.h>
+#include <lilc_matrix_ildl.h>
+#include <lilc_matrix_pivot.h>
+#include <lilc_matrix_load.h>
+#include <lilc_matrix_save.h>
+#include <lilc_matrix_to_string.h>
 
 #endif

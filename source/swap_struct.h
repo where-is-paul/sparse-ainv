@@ -1,3 +1,7 @@
+#include <vector>
+
+using std::vector;
+
 /*!	\brief A structure containing variables used in pivoting a LIL-C matrix.
 	
 	Storing these variables in a combined structure reduces memory requirements and bundles together all temporary structures needed during pivoting.

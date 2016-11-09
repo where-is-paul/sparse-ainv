@@ -47,24 +47,16 @@ bool lilc_matrix<el_type> :: load (std::string filename)
 		
 		std::stringstream line(buffer);
 		//line.sync_with_stdio(0);
-		if(!readsizes)
-		{
+		if(!readsizes) {
 			line >> n_rows >> n_cols >> n_nzs;
-			if(n_rows > 0 && n_cols > 0 && n_nzs > 0) 
-			{
+			if(n_rows > 0 && n_cols > 0 && n_nzs > 0) {
 				readsizes = true;
-				
 				resize(n_rows, n_cols);
-				std::fill(row_first.begin(), row_first.end(), 0); //a bit of optimization could be used here since resize sets all elem in first to 1
-				std::fill(col_first.begin(), col_first.end(), 0); //a bit of optimization could be used here since resize sets all elem in first to 1
 			}
-		}
-		else
-		{ 
+		} else { 
 			i = -1;
 			j = -1;
-			if( readline(line, n_rows, n_cols, i, j, value) ) 
-			{
+			if( readline(line, n_rows, n_cols, i, j, value) ) {
 				if (j > i) {
 					full_detected = true;
 					continue;
@@ -73,11 +65,9 @@ bool lilc_matrix<el_type> :: load (std::string filename)
 				m_x[j].push_back(value);
 				++count;
 				assert(i >= j);
-				if (i != j) list[i].push_back(j);
+				if (i != j) m_list[i].push_back(j);
 				
-			}
-			else 
-			std::cerr << "Invalid read: " << i << "," << j << "\n";		
+			} else std::cerr << "Invalid read: " << i << "," << j << "\n";		
 		}
 		
 	}

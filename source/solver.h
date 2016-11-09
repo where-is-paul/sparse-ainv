@@ -6,7 +6,7 @@
 #include <ctime>
 #include <iomanip>
 
-#include "lilc_matrix.h"
+#include <lilc_matrix.h>
 
 namespace symildl {
 
@@ -136,11 +136,9 @@ class solver {
 		
         int equil_type; ///<The equilibration method used. Set to 1 for max-norm equilibriation.
 		
-	int msg_lvl; ///<Controls the amount of output to stdout.
+		int msg_lvl; ///<Controls the amount of output to stdout.
 		int solve_type; //<The type of solver used to solve the right hand side.
 		bool has_rhs; ///<Set to true if we have a right hand side that we expect to solve.
-		bool perform_inplace; ///<Set to true if we are factoring the matrix A inplace.
-       		// TODO: refactor this away
 		bool save_sol; ///<Set to true if we want to save the solution to a file.
 		 
         vector<el_type> rhs; ///<The right hand side we'll solve for.
@@ -150,12 +148,11 @@ class solver {
 		*/
 		solver() {
 			msg_lvl = message_level::STATISTICS;
-            		piv_type = pivot_type::ROOK;
+            piv_type = pivot_type::ROOK;
 			reorder_type = reordering_type::AMD;
 			equil_type = equilibration_type::BUNCH;
 			solve_type = solver_type::SQMR;
-            		has_rhs = false;
-            		perform_inplace = false;
+    		has_rhs = false;
 		}
 				
 		/*! \brief Loads the matrix A into solver. A must be of matrix market format.
@@ -240,12 +237,6 @@ class solver {
 				msg_lvl = message_level::DEBUG;
 			}
 		}
-		
-        /*! \brief Decides whether we perform the factorization inplace or not.
-		*/
-		void set_inplace(bool inplace) {
-			perform_inplace = inplace;
-		}
         
         /*! \brief Decides the kind of partial pivoting we should use.
 		*/
@@ -315,11 +306,7 @@ class solver {
 			}
 
 			start = clock();
-            if (perform_inplace) {
-                A.ildl_inplace(D, perm, fill_factor, tol, pp_tol, piv_type);
-            } else {
-                A.ildl(L, D, perm, fill_factor, tol, pp_tol, piv_type);
-            }
+            //A.ildl(L, D, perm, fill_factor, tol, pp_tol, piv_type);
 			dif = clock() - start; total += dif;
 			
             std::string pivot_name;
@@ -331,100 +318,81 @@ class solver {
             
 			if (msg_lvl) printf("  Factorization (%s pivoting):\t%.3f seconds.\n", pivot_name.c_str(), dif/CLOCKS_PER_SEC);
 			if (msg_lvl) printf("Total time:\t\t\t%.3f seconds.\n", total/CLOCKS_PER_SEC);
-            if (perform_inplace) {
-                if (msg_lvl) printf("L is %d by %d with %d non-zeros.\n", A.n_rows(), A.n_cols(), A.nnz() );
-            } else {
-                if (msg_lvl) printf("L is %d by %d with %d non-zeros.\n", L.n_rows(), L.n_cols(), L.nnz() );
-            }
-			if (msg_lvl) printf("\n");
+            if (msg_lvl) printf("L is %d by %d with %d non-zeros.\n", L.n_rows(), L.n_cols(), L.nnz() );
+            if (msg_lvl) printf("\n");
 			fflush(stdout);
 			
 			// if there is a right hand side, it means the user wants a solve.
 			// TODO: refactor this solve to be in its own method, and separate 
 			// factoring/minres solve phase
 			if (has_rhs) {
-                if (perform_inplace) {
-                    if (msg_lvl) printf("Inplace factorization cannot be used with the solver. Please try again without -inplace.\n");
-                } else {
-                    // start timer in case we're doing a full solve
-                    start = clock();
+                // start timer in case we're doing a full solve
+                start = clock();
                     
-                    // we've permuted and equilibrated the matrix, so we gotta apply 
-                    // the same permutation and equilibration to the right hand side.
-                    // i.e. rhs = P'S*rhs
-                    // 0. apply S
-                    for (int i = 0; i < A.n_cols(); i++) {
-                        rhs[i] = A.S[i]*rhs[i];
-                    }
-                    
-                    // 1. apply P' (takes rhs[perm[i]] to rhs[i], i.e. inverse of perm, 
-                    //    where perm takes i to perm[i])
-                    vector<el_type> tmp(A.n_cols());
-                    for (int i = 0; i < A.n_cols(); i++) {
-                        tmp[i] = rhs[perm[i]];
-                    }
-                    rhs = tmp;
-                    
-                    if (solve_type == solver_type::FULL) {
-                        if (msg_lvl) printf("Solving matrix with direct solver...\n");
-                        sol_vec.resize(A.n_cols(), 0);
-                        // MINRES uses the preconditioned solver that
-                        // splits the block D into |D|^(1/2).
-                        // For the full solver we'll just solve D directly.
-                        L.backsolve(rhs, sol_vec);
-                        D.solve(sol_vec, tmp);
-                        L.forwardsolve(tmp, sol_vec);
-                    } else {
-                        start = clock();
-						
-						if (solve_type == solver_type::MINRES) {
-							// finally, since we're preconditioning with M = L|D|^(1/2), we have
-							// to multiply M^(-1) to the rhs and solve the system
-							// M^(-1) * B * M'^(-1) y = M^(-1)P'*S*b
-							L.backsolve(rhs, tmp);
-							D.sqrt_solve(tmp, rhs, false);
-							
-							if (msg_lvl) printf("Solving matrix with MINRES...\n");
-							// solve the equilibrated, preconditioned, and permuted linear system
-							minres(max_iter, minres_tol, shift);
-							
-							// now we've solved M^(-1)*B*M'^(-1)y = M^(-1)P'*S*b
-							// where B = P'SASPy.
-							
-							// but the actual solution is y = M' * P'S^(-1)*x
-							// so x = S*P*M'^(-1)*y
-							
-							// 0. apply M'^(-1)
-							D.sqrt_solve(sol_vec, tmp, true);
-							L.forwardsolve(tmp, sol_vec);
-						} else if (solve_type == solver_type::SQMR) {
-							if (msg_lvl) printf("Solving matrix with SQMR...\n");
-							sqmr(max_iter, minres_tol);
-						}
-                    }
-            
-                    // 1. apply P
-                    for (int i = 0; i < A.n_cols(); i++) {
-                        tmp[perm[i]] = sol_vec[i];
-                    }
-                    sol_vec = tmp;
-                    
-                    // 2. apply S
-                    for (int i = 0; i < A.n_cols(); i++) {
-                        sol_vec[i] = A.S[i]*sol_vec[i];
-                    }
-                    dif = clock() - start;
-                    if (msg_lvl) printf("Solve time:\t%.3f seconds.\n", dif/CLOCKS_PER_SEC);
-                    if (msg_lvl) printf("\n");
-        
-		if (save_sol) {            
-                    // save results
-                    // TODO: refactor this to be in its own method
-                    if (msg_lvl) printf("Solution saved to output_matrices/outsol.mtx.\n");
-                    save_vector(sol_vec, "output_matrices/outsol.mtx");
+                // we've permuted and equilibrated the matrix, so we gotta apply 
+                // the same permutation and equilibration to the right hand side.
+                // i.e. rhs = P'S*rhs
+                // 0. apply S
+                for (int i = 0; i < A.n_cols(); i++) {
+                    rhs[i] = A.S[i]*rhs[i];
                 }
+                    
+                // 1. apply P' (takes rhs[perm[i]] to rhs[i], i.e. inverse of perm, 
+                //    where perm takes i to perm[i])
+                vector<el_type> tmp(A.n_cols());
+                for (int i = 0; i < A.n_cols(); i++) {
+                    tmp[i] = rhs[perm[i]];
+                }
+                rhs = tmp;
+                    
+                start = clock();
+						
+				if (solve_type == solver_type::MINRES) {
+					// finally, since we're preconditioning with M = L|D|^(1/2), we have
+					// to multiply M^(-1) to the rhs and solve the system
+					// M^(-1) * B * M'^(-1) y = M^(-1)P'*S*b
+					//L.backsolve(rhs, tmp);
+					//D.sqrt_solve(tmp, rhs, false);
+							
+					if (msg_lvl) printf("Solving matrix with MINRES...\n");
+					// solve the equilibrated, preconditioned, and permuted linear system
+					minres(max_iter, minres_tol, shift);
+							
+					// now we've solved M^(-1)*B*M'^(-1)y = M^(-1)P'*S*b
+					// where B = P'SASPy.
+							
+					// but the actual solution is y = M' * P'S^(-1)*x
+					// so x = S*P*M'^(-1)*y
+							
+					// 0. apply M'^(-1)
+					//D.sqrt_solve(sol_vec, tmp, true);
+					//L.forwardsolve(tmp, sol_vec);
+				} else if (solve_type == solver_type::SQMR) {
+					if (msg_lvl) printf("Solving matrix with SQMR...\n");
+					sqmr(max_iter, minres_tol);
+				}
 
-		}
+            
+				// 1. apply P
+				for (int i = 0; i < A.n_cols(); i++) {
+					tmp[perm[i]] = sol_vec[i];
+				}
+				sol_vec = tmp;
+                    
+				// 2. apply S
+				for (int i = 0; i < A.n_cols(); i++) {
+					sol_vec[i] = A.S[i]*sol_vec[i];
+				}
+				dif = clock() - start;
+				if (msg_lvl) printf("Solve time:\t%.3f seconds.\n", dif/CLOCKS_PER_SEC);
+				if (msg_lvl) printf("\n");
+        
+				if (save_sol) {            
+					// save results
+					// TODO: refactor this to be in its own method
+					if (msg_lvl) printf("Solution saved to output_matrices/outsol.mtx.\n");
+					save_vector(sol_vec, "output_matrices/outsol.mtx");
+				}
 			}
 		}
 		
@@ -449,12 +417,8 @@ class solver {
 		*/
 		void save() { // TODO: refactor this as a "save factors" method
 			if (msg_lvl) cout << "Saving matrices..." << endl;
-            if (!perform_inplace) {
-                A.save("output_matrices/outB.mtx", true);
-                L.save("output_matrices/outL.mtx", false);
-            } else {
-                A.save("output_matrices/outL.mtx", false);
-            }
+            A.save("output_matrices/outB.mtx", true);
+            L.save("output_matrices/outL.mtx", false);
             
 			A.S.save("output_matrices/outS.mtx");
 			save_vector(perm, "output_matrices/outP.mtx");
@@ -478,8 +442,8 @@ class solver {
 		}
 };
 
-#include "solver_minres.h"
-#include "solver_sqmr.h"
+#include <solver_minres.h>
+#include <solver_sqmr.h>
 
 }
 
