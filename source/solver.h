@@ -46,6 +46,21 @@ struct message_level {
 	};
 };
 
+struct solver_params {
+	double ainv_tol;
+	double ainv_beta;
+	double solver_tol;
+	double shift;
+	int max_iters;
+	
+	solver_params() {
+		ainv_tol = 1e-2;
+		ainv_beta = 1.0;
+		solver_tol = 1e-6;
+		shift = 0.0;
+		max_iters = -1;
+	}
+};
 
 /*!	\brief Saves a permutation vector vec as a permutation matrix in matrix market (.mtx) format.
 	\param vec the permutation vector.
@@ -257,13 +272,7 @@ class solver {
 			\param pp_tol a factor controling the aggresiveness of Bunch-Kaufman pivoting.
 			\param max_iter the maximum number of iterations for minres (ignored if no right hand side).
 		*/
-		void solve(double fill_factor, double tol, double pp_tol, int max_iter = -1, double minres_tol = 1e-6, double shift = 0.0) {
-            // A full factorization is equivalent to a fill factor of n and tol of 0
-            if (solve_type == solver_type::FULL) {
-                tol = 0.0;
-                fill_factor = A.n_cols();
-            }
-            
+		void solve(solver_params par = solver_params()) {
 			perm.reserve(A.n_cols());
 			cout << std::fixed << std::setprecision(3);
 			
@@ -306,7 +315,12 @@ class solver {
 			}
 
 			start = clock();
-            //A.ildl(L, D, perm, fill_factor, tol, pp_tol, piv_type);
+			lilc_matrix<double>::params ainv_par;
+			ainv_par.tol = par.ainv_tol;
+			ainv_par.beta = par.ainv_beta;
+			ainv_par.piv_type = piv_type;
+
+            A.ainv(L, D, perm, ainv_par);
 			dif = clock() - start; total += dif;
 			
             std::string pivot_name;
@@ -356,7 +370,7 @@ class solver {
 							
 					if (msg_lvl) printf("Solving matrix with MINRES...\n");
 					// solve the equilibrated, preconditioned, and permuted linear system
-					minres(max_iter, minres_tol, shift);
+					minres(par.max_iters, par.solver_tol, par.shift);
 							
 					// now we've solved M^(-1)*B*M'^(-1)y = M^(-1)P'*S*b
 					// where B = P'SASPy.
@@ -369,7 +383,7 @@ class solver {
 					//L.forwardsolve(tmp, sol_vec);
 				} else if (solve_type == solver_type::SQMR) {
 					if (msg_lvl) printf("Solving matrix with SQMR...\n");
-					sqmr(max_iter, minres_tol);
+					sqmr(par.max_iters, par.solver_tol);
 				}
 
             

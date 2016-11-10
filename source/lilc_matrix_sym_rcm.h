@@ -11,8 +11,8 @@ struct by_degree {
 	lilc_matrix<el_type>* A;
 	by_degree(lilc_matrix<el_type>* mat) : A(mat) {}
 	bool operator()(int const &a, int const &b) const { 
-		int deg_a = A->m_list[a].size() + A->m_idx[a].size();
-		int deg_b = A->m_list[b].size() + A->m_idx[b].size();
+		int deg_a = static_cast<int>(A->m_list[a].size() + A->m_idx[a].size());
+		int deg_b = static_cast<int>(A->m_list[b].size() + A->m_idx[b].size());
 		
 		if (A->m_idx[a].size() > 0 && A->m_idx[a][0] == a) deg_a--;
 		if (A->m_idx[b].size() > 0 && A->m_idx[b][0] == b) deg_b--;

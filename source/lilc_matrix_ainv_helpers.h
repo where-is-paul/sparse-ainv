@@ -1,5 +1,5 @@
-#ifndef _LILC_MATRIX_ILDL_HELPERS_H
-#define _LILC_MATRIX_ILDL_HELPERS_H
+#ifndef _LILC_MATRIX_AINV_HELPERS_H
+#define _LILC_MATRIX_AINV_HELPERS_H
 
 using std::abs;
 using std::vector;

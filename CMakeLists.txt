@@ -2,28 +2,11 @@ cmake_minimum_required(VERSION 2.8.12 FATAL_ERROR)
 
 project( sparse-ainv )
 
-set( HEADERS 	source/block_diag_matrix.h
-				source/block_diag_matrix_save.h
-				source/block_diag_matrix_to_string.h
-				source/lilc_matrix.h
-				source/lilc_matrix_declarations.h
-				source/lilc_matrix_find_level_set.h
-				source/lilc_matrix_find_root.h
-				source/lilc_matrix_ildl.h
-				source/lilc_matrix_ildl_helpers.h
-				source/lilc_matrix_load.h
-				source/lilc_matrix_pivot.h
-				source/lilc_matrix_save.h
-				source/lilc_matrix_sym_amd.h
-				source/lilc_matrix_sym_equil.h
-				source/lilc_matrix_sym_perm.h
-				source/lilc_matrix_to_string.h
-				source/solver.h
-				source/solver_minres.h
-				source/solver_sqmr.h
-				source/swap_struct.h )
-				
-set( SRCS		source/ldl_driver.cpp )
+file(GLOB HEADERS
+	"./source/*.h"
+)
+
+set( SRCS source/ldl_driver.cpp )
 
 file(GLOB GFLAGS_SRCS
 	"./extern/gflags/*.h"

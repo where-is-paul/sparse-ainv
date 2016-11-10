@@ -1,5 +1,5 @@
-#ifndef _LILC_MATRIX_ILDL_H_
-#define _LILC_MATRIX_ILDL_H_
+#ifndef _LILC_MATRIX_AINV_H_
+#define _LILC_MATRIX_AINV_H_
 
 
 using std::endl;
@@ -7,16 +7,13 @@ using std::cout;
 using std::abs;
 
 template <class el_type>
-void lilc_matrix<el_type> :: ildl(lilc_matrix<el_type>& L, block_diag_matrix<el_type>& D, idx_vector_type& perm, const double& fill_factor, const double& tol, const double& pp_tol, int piv_type)
+void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_type>& D, idx_vector_type& perm, params par)
 {
+	/*
 
 	//----------------- initialize temporary variables --------------------//
 	const int ncols = n_cols(); //number of cols in A.
-	
-	int lfil;
-	if (fill_factor > 1e4) lfil = ncols; //just incase users decide to enter a giant fill factor for fun...
-	else lfil = 2*fill_factor*nnz()/ncols; //roughly a factor of 2 since only lower tri. of A is stored
-	
+
 	const el_type alpha = (1.0+sqrt(17.0))/8.0;  //for use in pivoting.
 	el_type w1(-1), wr(-1), d1(-1), dr(-1);		//for use in bk-pivoting
 	el_type det_D, D_inv11, D_inv22, D_inv12;	//for use in 2x2 pivots
@@ -36,7 +33,9 @@ void lilc_matrix<el_type> :: ildl(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	//--------------- allocate memory for L and D ------------------//
 	L.resize(ncols, ncols); //allocate a vector of size n for Llist as well
 	D.resize(ncols );
-	
+	*/
+
+	/*
 	//------------------- main loop: factoring begins -------------------------//
 	for (k = 0; k < ncols; k++) {
 		
@@ -459,6 +458,7 @@ void lilc_matrix<el_type> :: ildl(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 	//assign number of non-zeros in L to L.nnz_count
 	L.nnz_count = count;
+	*/
 
 }
 

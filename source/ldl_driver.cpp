@@ -14,7 +14,7 @@ DEFINE_double(fill, 3.0, "A parameter to control memory usage. Each column is gu
 DEFINE_double(tol, 0.001, "A parameter to control agressiveness of dropping. In each column k,"
 		"elements less than tol*||L(k+1:n,k)|| (1-norm) are dropped.");
 
-DEFINE_double(pp_tol, 1.0, "A parameter to aggressiveness of Bunch-Kaufman pivoting (BKP). "
+DEFINE_double(beta, 1.0, "A parameter to aggressiveness of Bunch-Kaufman pivoting (BKP). "
 		"When pp_tol >= 1, full BKP is used. When pp_tol is 0, BKP is faster"
 		"but chooses poorer pivots. Values between 0 and 1 varies the aggressiveness of"
 		"BKP in a continuous manner.");
@@ -106,7 +106,13 @@ int main(int argc, char* argv[])
 	}
 
 	solv.set_pivot(FLAGS_pivot.c_str());
-	solv.solve(FLAGS_fill, FLAGS_tol, FLAGS_pp_tol, FLAGS_max_iters, FLAGS_solver_tol);
+	symildl::solver_params par;
+	par.ainv_tol = FLAGS_tol;
+	par.ainv_beta = FLAGS_beta;
+	par.max_iters = FLAGS_max_iters;
+	par.solver_tol = FLAGS_solver_tol;
+
+	solv.solve(par);
 
 	if (FLAGS_save) {
 		solv.save();
