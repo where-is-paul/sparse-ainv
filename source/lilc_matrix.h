@@ -244,13 +244,14 @@ public:
 		\param y a storage vector for the result (must be same size as x).
 		\param full_mult if true, we assume that only half the matrix is stored and do do operations per element of the matrix to account for the unstored other half.
 	*/
-	void multiply(const elt_vector_type& x, elt_vector_type& y, bool full_mult = true) {
+	void multiply(const elt_vector_type& x, elt_vector_type& y, bool transposed = false) {
 		y.clear(); y.resize(x.size(), 0);
 		for (int i = 0; i < m_n_cols; i++) {
 			for (int k = 0; k < m_idx[i].size(); k++) {
-				y[m_idx[i][k]] += x[i]*m_x[i][k];
-				if (full_mult && i != m_idx[i][k]) {
+				if (transposed) {
 					y[i] += x[m_idx[i][k]]*m_x[i][k];
+				} else {
+					y[m_idx[i][k]] += x[i]*m_x[i][k];
 				}
 			}
 		}

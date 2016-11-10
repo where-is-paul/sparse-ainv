@@ -362,11 +362,11 @@ class solver {
                 start = clock();
 						
 				if (solve_type == solver_type::MINRES) {
-					// finally, since we're preconditioning with M = L|D|^(1/2), we have
+					// finally, since we're preconditioning with M^(-1) = Z|D|^(1/2), we have
 					// to multiply M^(-1) to the rhs and solve the system
 					// M^(-1) * B * M'^(-1) y = M^(-1)P'*S*b
-					//L.backsolve(rhs, tmp);
-					//D.sqrt_solve(tmp, rhs, false);
+					L.multiply(rhs, tmp, true);
+					D.sqrt_solve(tmp, rhs, false);
 							
 					if (msg_lvl) printf("Solving matrix with MINRES...\n");
 					// solve the equilibrated, preconditioned, and permuted linear system
@@ -379,8 +379,8 @@ class solver {
 					// so x = S*P*M'^(-1)*y
 							
 					// 0. apply M'^(-1)
-					//D.sqrt_solve(sol_vec, tmp, true);
-					//L.forwardsolve(tmp, sol_vec);
+					D.sqrt_solve(sol_vec, tmp, true);
+					L.multiply(tmp, sol_vec, false);
 				} else if (solve_type == solver_type::SQMR) {
 					if (msg_lvl) printf("Solving matrix with SQMR...\n");
 					sqmr(par.max_iters, par.solver_tol);
@@ -445,11 +445,8 @@ class solver {
 		*/
 		void display() {
 #ifdef SYM_ILDL_DEBUG
-            if (perform_inplace) {
-                cout << A << endl;
-            } else {
-                cout << L << endl;
-            }
+			cout << A << endl;
+            cout << L << endl;
 			cout << D << endl;
 			cout << perm << endl;
 #endif

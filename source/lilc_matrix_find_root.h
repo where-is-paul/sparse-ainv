@@ -22,7 +22,7 @@ inline void lilc_matrix<el_type> :: find_root(int& s) {
 			ls_max = ls;
 			int deg, min_deg = m_n_cols;
 			for (idx_it it = lvl_set.begin(); it != lvl_set.end(); it++) {
-				deg = static_cast<int>(m_list[*it].size() + m_idx[*it].size());
+				deg = static_cast<int>(m_idx[*it].size());
 				if (m_idx[*it].size() > 0 && m_idx[*it][0] == *it) deg--;
 				if (deg < min_deg) { //should consider tie breaking by index later if needed.
 					min_deg = deg;

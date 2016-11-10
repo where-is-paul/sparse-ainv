@@ -32,9 +32,9 @@ void solver<el_type, mat_type> :: sqmr(int max_iter, double stop_tol) {
 	
 	// Our preconditioner M = LDL'.
 	auto Minv = [&](vector<el_type>& in, vector<el_type>& out) { 
-		L.backsolve(in, out);
+		L.multiply(in, out, true);
 		D.solve(out, tmp);
-		L.forwardsolve(tmp, out);
+		L.multiply(tmp, out, false);
 	};
 	
 	// compute t = M^(-1) * r

@@ -61,9 +61,18 @@ bool lilc_matrix<el_type> :: load (std::string filename)
 					full_detected = true;
 					continue;
 				}
-				m_idx[j].push_back(i);
-				m_x[j].push_back(value);
+
+				// Expand the matrix into lower and upper half
+				m_idx[i].push_back(j);
+				m_x[i].push_back(value);
 				++count;
+
+				if (i != j) {
+					m_idx[j].push_back(i);
+					m_x[j].push_back(value);
+					++count;
+				}
+				
 				assert(i >= j);
 				if (i != j) m_list[i].push_back(j);
 				
@@ -108,10 +117,17 @@ bool lilc_matrix<el_type> :: load (const int* ptr, const int* row, const el_type
 				full_detected = true;
 				continue;
 			}
+
 			m_idx[i].push_back(row[j]);
 			m_x[i].push_back(val[j]);
-			if (i != row[j]) list[row[j]].push_back(i);
 			++count;
+			if (i != row[j]) {
+				m_idx[row[j]].push_back(i);
+				m_x[row[j]].push_back(val[j]);
+				++count;
+			}
+
+			if (i != row[j]) list[row[j]].push_back(i);
 		}
 	}
 

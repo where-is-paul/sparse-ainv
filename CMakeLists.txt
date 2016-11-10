@@ -14,5 +14,6 @@ file(GLOB GFLAGS_SRCS
 )
 
 add_definitions( -D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE )
+add_definitions( -DSYM_ILDL_DEBUG )
 include_directories( ./source ./extern/gflags )
 add_executable( ldl_driver ${SRCS} ${GFLAGS_SRCS} ${HEADERS} )

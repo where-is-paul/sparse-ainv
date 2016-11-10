@@ -62,13 +62,13 @@ void solver<el_type, mat_type> :: minres(int max_iter, double stop_tol, double s
 		//pk = (M^(-1) A M^(-t) - shift*I) * v[cur], where M = L|D|^(1/2) where |D|^(1/2) = Q|V|^(1/2)
 		//we do this in steps. first, tk = L^(-t) * |D|^(-t/2) pk
 		D.sqrt_solve(v[cur], pk, true);
-		L.forwardsolve(pk, tk);
+		L.multiply(pk, tk, false);
 		
 		//pk = A*tk
 		A.multiply(tk, pk);
 
 		//pk = |D|^(-1/2) L^(-1) pk. after this step, pk = M^(-1) A M^(-t) v[cur]
-		L.backsolve(pk, tk);
+		L.multiply(pk, tk, true);
 		D.sqrt_solve(tk, pk, false);
 		
 		//finally, pk = pk - shift*I * v[cur];

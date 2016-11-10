@@ -22,17 +22,11 @@ void lilc_matrix<el_type> :: sym_perm(std::vector<int>& perm) {
 			pi = pinv[m_idx[j][i]];
 			px = m_x[j][i];
 			
-			if (pi < pj) {
-				m_idx_new[ pi ].push_back(pj);
-				m_x_new[ pi ].push_back(px);
-				m_list[pj].push_back(pi);
-			} else {
-				m_idx_new[ pj ].push_back(pi);
-				m_x_new[ pj ].push_back(px);
-				
-				if (pi != pj)
+			m_idx_new[ pi ].push_back(pj);
+			m_x_new[ pi ].push_back(px);
+			m_list[pj].push_back(pi);
+			if (pi != pj) {
 				m_list[pi].push_back(pj);
-				
 			}
 		}
 	}

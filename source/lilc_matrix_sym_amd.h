@@ -91,9 +91,6 @@ inline void lilc_matrix<el_type> :: sym_amd(vector<int>& perm) {
 	int cnt = 0;
 	Cp[0] = 0;
 	for (int i = 0; i < n; i++) {
-		for (int j = 0; j < (int) m_list[i].size(); j++) {
-			Ci[cnt++] = m_list[i][j];
-		}
 		for (int j = 0; j < (int) m_idx[i].size(); j++) {
 			Ci[cnt++] = m_idx[i][j];
 		}
