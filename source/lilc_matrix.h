@@ -22,6 +22,7 @@
 */
 
 using std::vector;
+using std::set;
 
 template<class el_type = double> 
 class lilc_matrix {
@@ -41,7 +42,8 @@ public:
 	vector<idx_vector_type> m_idx;///<The row/col indices. The way m_idx is used depends on whether the matrix is in LIL-C or LIL-R.
 	vector<elt_vector_type> m_x;///<The values of the nonzeros in the matrix.
 
-	vector<idx_vector_type> m_list;
+	//vector<idx_vector_type> m_list;
+	vector<set<int>> m_list;
     
 	block_diag_matrix<el_type> S; ///<A diagonal scaling matrix S such that SAS will be equilibriated in the max-norm (i.e. every row/column has norm 1). S is constructed after running the sym_equil() function, after which SAS will be stored in place of A.
     

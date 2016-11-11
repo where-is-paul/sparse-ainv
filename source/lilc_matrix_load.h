@@ -74,14 +74,14 @@ bool lilc_matrix<el_type> :: load (std::string filename)
 				}
 				
 				assert(i >= j);
-				if (i != j) m_list[i].push_back(j);
+
+				m_list[i].insert(j);
+				if (i != j) m_list[j].insert(i);
 				
 			} else std::cerr << "Invalid read: " << i << "," << j << "\n";		
 		}
 		
 	}
-	
-	if (!full_detected && count != n_nzs) std::cout << "Expected " << n_nzs << " elems but read " << count << "." << std::endl;
 	
 	if (full_detected) {
 		std::cout << "Full matrix detected, assuming matrix is symmetric and loading lower-half of the matrix only." << std::endl;
@@ -127,7 +127,8 @@ bool lilc_matrix<el_type> :: load (const int* ptr, const int* row, const el_type
 				++count;
 			}
 
-			if (i != row[j]) list[row[j]].push_back(i);
+			list[i].insert(row[j]);
+			if (i != row[j]) list[row[j]].insert(i);
 		}
 	}
 

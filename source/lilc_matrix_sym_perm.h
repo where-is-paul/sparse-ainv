@@ -24,9 +24,11 @@ void lilc_matrix<el_type> :: sym_perm(std::vector<int>& perm) {
 			
 			m_idx_new[ pi ].push_back(pj);
 			m_x_new[ pi ].push_back(px);
-			m_list[pj].push_back(pi);
+			//m_list[pj].push_back(pi);
+			m_list[pj].insert(pi);
 			if (pi != pj) {
-				m_list[pi].push_back(pj);
+				//m_list[pi].push_back(pj);
+				m_list[pi].insert(pj);
 			}
 		}
 	}

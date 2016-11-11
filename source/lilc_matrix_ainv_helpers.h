@@ -141,6 +141,7 @@ inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double
 		work.push_back(vals[i]);
 		nnzs.push_back(curr_nnzs[i]);
 	}
+
 	vals.swap(work);
 	curr_nnzs.swap(nnzs);
 }

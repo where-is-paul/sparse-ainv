@@ -41,3 +41,5 @@ Thumbs.db
 
 # Folders #
 build
+papers
+output_matrices/out*
