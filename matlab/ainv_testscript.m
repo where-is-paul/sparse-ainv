@@ -1,17 +1,17 @@
-function ildl_testscript(problem,pvtsize,droptol,droptype,shift,shiftA_flag,linsolve_tol)
+function ainv_testscript(problem,pvtsize,droptol,droptype,shift,shiftA_flag,linsolve_tol)
 %%% pvtsize = 2 for this study; pivot of larger size to be explored in future
 
-% Test examples (zero shifts) 
+% Test examples (zero shifts)
 % case9: flag_wmn = true, threshold = 0.75
-% ildl_testscript('case9.mtx','2','1e-7','relative','0','false','1e-7');
+% ainv_testscript('case9.mtx','2','1e-7','relative','0','false','1e-7');
 % OPF_3754: flag_grook = true, threshold = 0.1
-% ildl_testscript('OPF_3754.mtx','2','5e-4','absolute','0','false','1e-8');
+% ainv_testscript('OPF_3754.mtx','2','1e-5','relative','0','false','1e-8');
 
 flag_gbk = (0 > 0);
-flag_grook = (1 > 0);
-flag_wmn = (0 > 0);
+flag_grook = (0 > 0);
+flag_wmn = (1 > 0);
 
-thresholds = [0.1];
+thresholds = [0.8];
 
 linsolve_tol = str2num(linsolve_tol);
 droptol = str2num(droptol);
@@ -22,12 +22,12 @@ shift = str2num(shift);
 B = A - shift*speye(size(A));
 if strcmpi(shiftA_flag,'true')
     A = B;
-    fprintf('Coefficient matrix is A-s*I with s = %d. ILDL also constructed for A-s*I.\n\n',shift);
+    fprintf('Coefficient matrix is A-s*I with s = %d. AINV also constructed for A-s*I.\n\n',shift);
 else
-    fprintf('Coefficient matrix is A. ILDL constructed for A-s*I with s = %d.\n\n',shift);
+    fprintf('Coefficient matrix is A. AINV constructed for A-s*I with s = %d.\n\n',shift);
 end
     
-fprintf('Performing LDL factorization of A.\n');
+fprintf('Performing LDLT factorization of A.\n');
 [L,D,~,~] = ldl(A,0.5);
 fprintf('LDLT factorization done. Computing the inertia of A.\n');
 [np,nn,nz] = inertia_blkdiag(D);
@@ -81,8 +81,8 @@ if flag_gbk
     mincost = realmax;
     for outer = 1 : length(thresholds)
         threshold = thresholds(outer);
-        fprintf('Outer iteration %d: testing GBK pivoting with treshold %.3f.\n',outer,threshold);
-        optdata = matrixtest_update_ildl(lindata,pvtsize,'gbk',threshold,droptol,droptype,linsolve_tol);
+        fprintf('Outer iteration %d: testing GBK pivoting with treshold %.2f.\n',outer,threshold);
+        optdata = matrixtest_update_ainv(lindata,pvtsize,'gbk',threshold,droptol,droptype,linsolve_tol);
         if optdata.cost < mincost
             mincost = optdata.cost;
             minoptdata = optdata;
@@ -97,8 +97,8 @@ if flag_grook
     mincost = realmax;
     for outer = 1 : length(thresholds)
         threshold = thresholds(outer);
-        fprintf('Outer iteration %d: testing GROOK pivoting with treshold %.3f.\n',outer,threshold);
-        optdata = matrixtest_update_ildl(lindata,pvtsize,'grook',threshold,droptol,droptype,linsolve_tol);
+        fprintf('Outer iteration %d: testing GROOK pivoting with treshold %.2f.\n',outer,threshold);
+        optdata = matrixtest_update_ainv(lindata,pvtsize,'grook',threshold,droptol,droptype,linsolve_tol);
         if optdata.cost < mincost
             mincost = optdata.cost;
             minoptdata = optdata;
@@ -109,12 +109,12 @@ if flag_grook
         minoptdata.droptol,minoptdata.threshold,minoptdata.density(1),minoptdata.density(2),minoptdata.iter,minoptdata.cost);
 end
 
-if flag_wmn
+if flag_wmn 
     mincost = realmax;
     for outer = 1 : length(thresholds)
         threshold = thresholds(outer);
-        fprintf('Outer iteration %d: testing WMN pivoting with treshold %.3f.\n',outer,threshold);
-        optdata = matrixtest_update_ildl(lindata,pvtsize,'wmn',threshold,droptol,droptype,linsolve_tol);
+        fprintf('Outer iteration %d: testing WMN pivoting with treshold %.2f.\n',outer,threshold);
+        optdata = matrixtest_update_ainv(lindata,pvtsize,'wmn',threshold,droptol,droptype,linsolve_tol);
         if optdata.cost < mincost
             mincost = optdata.cost;
             minoptdata = optdata;

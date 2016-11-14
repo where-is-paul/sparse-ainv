@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	symildl::solver<double> solv;
+	sparse_ainv::solver<double> solv;
 
 	//default is statistics output
 	solv.set_message_level("statistics");
@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
 
 		vector<double> rhs;
 		if (!FLAGS_rhs_file.empty()) {
-			symildl::read_vector(rhs, FLAGS_rhs_file);
+			sparse_ainv::read_vector(rhs, FLAGS_rhs_file);
 		} else {
 			// for testing purposes only
 			rhs.resize(solv.A.n_cols(), 1);
@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
 	}
 
 	solv.set_pivot(FLAGS_pivot.c_str());
-	symildl::solver_params par;
+	sparse_ainv::solver_params par;
 	par.ainv_tol = FLAGS_tol;
 	par.ainv_beta = FLAGS_beta;
 	par.max_iters = FLAGS_max_iters;

@@ -38,26 +38,6 @@ inline void vector_sum(double a, vector<el_type>& v, double b, vector<el_type>& 
 	}
 }
 
-/*! \brief Computes the maximum (in absolute value) element of v(curr_nnzs) and it's index.
-	\param v the vector whose max element is to be computed.
-	\param curr_nnzs a list of indices representing non-zero elements in v.
-	\param r the index of the maximum element of v
-	
-	\return the max element of v.
-*/
-template <class el_type>
-inline double max(vector<el_type>& v, vector<int>& curr_nnzs, int& r) { 
-	double res = 0;
-	for (idx_it it = curr_nnzs.begin(), end = curr_nnzs.end(); it != end; ++it) {
-		if (abs(v[*it]) > res) {
-			res = abs(v[*it]);
-			r = *it;
-		}
-	}
-	
-	return res;
-}
-
 /*! \brief Computes the norm of v(curr_nnzs).
 	\param v the vector whose norm is to be computed.
 	\param curr_nnzs a list of indices representing non-zero elements in v.

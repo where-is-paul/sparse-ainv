@@ -8,7 +8,7 @@
 
 #include <lilc_matrix.h>
 
-namespace symildl {
+namespace sparse_ainv {
 
 // Using struct'd enums to achieve a C++11 style enum class without C++11
 struct reordering_type {
@@ -431,7 +431,7 @@ class solver {
 		*/
 		void save() { // TODO: refactor this as a "save factors" method
 			if (msg_lvl) cout << "Saving matrices..." << endl;
-            A.save("output_matrices/outB.mtx", true);
+            A.save("output_matrices/outB.mtx", false);
             L.save("output_matrices/outL.mtx", false);
             
 			A.S.save("output_matrices/outS.mtx");
