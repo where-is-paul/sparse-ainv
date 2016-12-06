@@ -3,12 +3,17 @@
 
 #include <pivot_strategy.h>
 
-class default_pivoter : public pivot_strategy {
+template<class el_type>
+class default_pivoter : public pivot_strategy<el_type> {
 public:
 	default_pivoter() {}
 
-	template<class el_type>
-	pivot_struct find_pivot(const lilc_matrix<el_type>* mat, const vector<int>& p, int col) { 
+	default_pivoter(lilc_matrix<el_type>* A_, lilc_matrix<el_type>* L_, const vector<int>* p_) 
+		: pivot_strategy<el_type>(A_, L_, p_) {
+	}
+
+	pivot_struct find_pivot(int col) { 
+		update_col(A1, A1_idx, col);
 		return pivot_struct(false, col);
 	}
 };

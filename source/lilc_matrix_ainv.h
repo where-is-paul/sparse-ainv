@@ -11,7 +11,7 @@ using std::abs;
 
 template <class el_type>
 void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_type>& D, idx_vector_type& perm, params par) {
-	//----------------- initialize temporary variables --------------------//
+	//---------------------------- initialize temporary variables ------------------------------//
 	const int ncols = n_cols(); //number of cols in A.
 
 	elt_vector_type work(ncols, 0);
@@ -43,15 +43,8 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		normA += norm(m_x[k]);
 	}
 
-	// choose pivoting strategy
-	pivot_strategy* pivoter;
-	if (par.piv_type == pivot_type::BKP) {
-		pivoter = new bkp_pivoter(par.beta);
-	} else {
-		pivoter = new default_pivoter();
-	}
 
-	//--------------- allocate memory for L and D ------------------//
+	//------------------------------- allocate memory for L and D -------------------------------//
 	L.resize(ncols, ncols); //allocate a vector of size n for Llist as well
 	D.resize(ncols);
 
@@ -62,39 +55,46 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		L.m_list[k].insert(k);
 	}
 
+	// choose pivoting strategy
+	pivot_strategy<el_type>* pivoter;
+	if (par.piv_type == pivot_type::BKP) {
+		pivoter = new bkp_pivoter<el_type>(this, &L, &p, par.beta);
+	} else {
+		pivoter = new default_pivoter<el_type>(this, &L, &p);
+	}
+
 	// Some structs for set union operations
-	set_unioner seen0;
-	seen0.reset(ncols);
 	vector<bool> seen1(ncols, 0);
 
 	// where the index value stored is > k
-	vector<int> to_update;
+	vector<int> A1_idx, Ar_idx;
+	vector<el_type> A1(ncols), Ar(ncols);
+
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
-		// figure out pivot column
-		pivot_struct piv_info = pivoter->find_pivot(this, p, k);
+		// need to pivot on ((A*M(:,p(dd)))'*M(:,p(dd:end)))';
+		// or, M'(:, p(dd)) * (A M(:, p(dd:end))) = l_{pk}' * [A l_{pk} A l_{p{k+1}) ... A l_pn]
+		// this is equivalent to pivoting on the D[j..n] vector
+		pivot_struct piv_info = pivoter->find_pivot(k);
 
 		// swap necessary rows and columns
 		// TODO: USE PERM2 HERE
 
 		// figure out list of D[k]'s to compute and update
-		for (int j : m_idx[k]) {
-			seen0.add_set(L.m_list[j]);
-		}
-		seen0.add_single(k);
-		seen0.flush(to_update);
+		pivoter->flush_col(A1, A1_idx, 0);
 
-		for (int j : to_update) {
-			col_wrapper<el_type> ak(m_x[k].data(), m_idx[k].data(), m_x[k].size()),
-								 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
-			D[j] = sparse_dot_prod(ak, lj);
-		}
+		// pivot on A1
+
 		// half-epsilon regularization
-		if (std::abs(D[k]) < eps) {
-			D[k] = eps * normA;
+		if (std::abs(A1[k]) < eps) {
+			A1[k] = eps * normA;
 		}
 
-		for (int j : to_update) {
+		for (int j : A1_idx) {
+			D[j] = A1[j];
+		}
+
+		for (int j : A1_idx) {
 			if (j == k) continue;
 			if (std::abs(D[j]) < eps) continue;
 

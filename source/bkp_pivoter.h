@@ -4,22 +4,29 @@
 #include <pivot_strategy.h>
 #include <cmath>
 
-class bkp_pivoter : public pivot_strategy {
+template<class el_type>
+class bkp_pivoter : public pivot_strategy<el_type> {
 public:
-	bkp_pivoter() : m_beta(1.0) {
+	bkp_pivoter(lilc_matrix<el_type>* A_, lilc_matrix<el_type>* L_, const vector<int>* p_) 
+		: m_beta(1.0), pivot_strategy<el_type>(A_, L_, p_) {
 		m_alpha = (1 + std::sqrt(17.0)) / 8;
 	}
 	
-	bkp_pivoter(double beta) : m_beta(beta) {
+	bkp_pivoter(lilc_matrix<el_type>* A_, lilc_matrix<el_type>* L_, const vector<int>* p_, double beta) 
+		: pivot_strategy<el_type>(A_, L_, p_) {
+		m_beta = beta;
+		m_alpha = (1 + std::sqrt(17.0)) / 8;
+	}
+
+	void set_beta(double beta) {
 		// Compute this with bisection
 		m_alpha = (1 + std::sqrt(17.0)) / 8;
 	}
 
-	// in: unpermuted index.
-	// out: unpermuted index
-	// PRECONDITION: ptr is sorted
-	template<class el_type>
-	pivot_struct find_pivot(const lilc_matrix<el_type>* mat, const vector<int>& p, int col) { 
+	pivot_struct find_pivot(int col) { 
+		update_col(A1, A1_idx, col);
+		return pivot_struct(false, col);
+		/*
 		// r: unpermuted index
 		double a11 = 0, w1 = 0;
 		int r = 0;
@@ -64,6 +71,7 @@ public:
 				return pivot_struct(true, r);
 			}
 		}
+		*/
 	}
 
 private:
