@@ -8,8 +8,8 @@ class default_pivoter : public pivot_strategy<el_type> {
 public:
 	default_pivoter() {}
 
-	default_pivoter(lilc_matrix<el_type>* A_, lilc_matrix<el_type>* L_, const vector<int>* p_) 
-		: pivot_strategy<el_type>(A_, L_, p_) {
+	default_pivoter(lilc_matrix<el_type>* A_, lilc_matrix<el_type>* L_, const vector<int>* p_, const vector<int>* pinv_) 
+		: pivot_strategy<el_type>(A_, L_, p_, pinv_) {
 	}
 
 	pivot_struct find_pivot(int col) { 

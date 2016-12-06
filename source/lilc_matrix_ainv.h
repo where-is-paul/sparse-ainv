@@ -18,9 +18,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	idx_vector_type curr_nnzs;
 	curr_nnzs.reserve(ncols); //reserves space for worse case (entire col is non-zero)
 	
-	vector<int> p(ncols, 0);
+	vector<int> p(ncols, 0), pinv(ncols, 0);
 	for (int k = 0; k < ncols; k++) {
 		p[k] = k;
+		pinv[k] = k;
 	}
 
 	int count = 0; //the total number of nonzeros stored in L.
@@ -58,9 +59,9 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	// choose pivoting strategy
 	pivot_strategy<el_type>* pivoter;
 	if (par.piv_type == pivot_type::BKP) {
-		pivoter = new bkp_pivoter<el_type>(this, &L, &p, par.beta);
+		pivoter = new bkp_pivoter<el_type>(this, &L, &p, &pinv, par.beta);
 	} else {
-		pivoter = new default_pivoter<el_type>(this, &L, &p);
+		pivoter = new default_pivoter<el_type>(this, &L, &p, &pinv);
 	}
 
 	// Some structs for set union operations
@@ -70,66 +71,68 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	vector<int> A1_idx, Ar_idx;
 	vector<el_type> A1(ncols), Ar(ncols);
 
-	//------------------- main loop: factoring begins -------------------------//
-	for (int k = 0; k < ncols; k++) {
-		// need to pivot on ((A*M(:,p(dd)))'*M(:,p(dd:end)))';
-		// or, M'(:, p(dd)) * (A M(:, p(dd:end))) = l_{pk}' * [A l_{pk} A l_{p{k+1}) ... A l_pn]
-		// this is equivalent to pivoting on the D[j..n] vector
-		pivot_struct piv_info = pivoter->find_pivot(k);
+	//------------------- convenience functions for pivoting ------------------//
+	auto pivot = [&](int k, int r) {
+#if 0
+		std::cerr << "-----------pre pivot---------- " << std::endl;
+		// output m_list and make sure im not crazy
+		for (int i = 0; i < ncols; i++) {
+			for (int j : L.m_list[i]) {
+				std::cerr << j << " ";
+			}
+			std::cerr << std::endl;
+		}
+		std::cerr << std::endl;
+#endif
 
-		// swap necessary rows and columns
-		// TODO: USE PERM2 HERE
-
-		// figure out list of D[k]'s to compute and update
-		pivoter->flush_col(A1, A1_idx, 0);
-
-		// pivot on A1
-
-		// half-epsilon regularization
-		if (std::abs(A1[k]) < eps) {
-			A1[k] = eps * normA;
+		// Swap values in L
+		// Swap k and r values in L.m_list
+		for (int j : L.m_idx[k]) {
+			if (L.m_list[j].count(r)) {
+				continue;
+			}
+			L.m_list[j].erase(k);
+			L.m_list[j].insert(r);
 		}
 
-		for (int j : A1_idx) {
-			D[j] = A1[j];
+		for (int j : L.m_idx[r]) {
+			if (L.m_list[j].count(k)) {
+				continue;
+			}
+			L.m_list[j].erase(r);
+			L.m_list[j].insert(k);
 		}
 
-		for (int j : A1_idx) {
-			if (j == k) continue;
-			if (std::abs(D[j]) < eps) continue;
+		std::swap(L.m_list[k], L.m_list[r]);
+		L.m_x[k].swap(L.m_x[r]);
+		L.m_idx[k].swap(L.m_idx[r]);
+		// Because nnz indices are sorted, we can just change the last
+		// elts indices since theyre guaranteed to be the diagonal
+		L.m_idx[k][L.m_idx[k].size()-1] = k;
+		L.m_idx[r][L.m_idx[r].size()-1] = r;
 
-			// Compute new schur complement
-			col_wrapper<el_type> lk(L.m_x[k].data(), L.m_idx[k].data(), L.m_x[k].size()),
-								 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
-			sparse_vec_add(1.0, lj, -D[j] / D[k], lk, work, curr_nnzs);
+		// Swap values in A
+		std::swap(p[k], p[r]);
+		std::swap(pinv[p[k]], pinv[p[r]]);
 
-			// Apply dropping rules
-			drop_tol(work, curr_nnzs, par.tol, j);
+		// Swap values in perm vector
+		std::swap(perm[k], perm[r]);
 
-			// Add existing nnz into set
-			for (int i : L.m_idx[j]) {
-				seen1[i] = true;
+#if 0
+		std::cerr << "-----------post pivot---------- " << std::endl;
+		// output m_list and make sure im not crazy
+		for (int i = 0; i < ncols; i++) {
+			for (int j : L.m_list[i]) {
+				std::cerr << j << " ";
 			}
-
-			L.m_x[j].swap(work);
-			L.m_idx[j].swap(curr_nnzs);
-
-			// Add to m_list if needed
-			for (int i : L.m_idx[j]) {
-				if (!seen1[i]) {
-					L.m_list[i].insert(j);
-				}
-				seen1[i] = false;
-			}
-
-			// Undo set additions
-			for (int i : curr_nnzs) {
-				if (seen1[i]) {
-					L.m_list[i].erase(j);
-				}
-				seen1[i] = false;
-			}
+			std::cerr << std::endl;
 		}
+		std::cerr << "------------------------------- " << std::endl;
+#endif
+
+	};
+
+	auto advance_list = [&](int k) {
 		// increase non-zero count of L
 		count += static_cast<int>(L.m_x[k].size());
 
@@ -139,10 +142,144 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				L.m_list[j].erase(L.m_list[j].begin());
 			}
 		}
+	};
+
+	//------------------- main loop: factoring begins -------------------------//
+	for (int k = 0; k < ncols; k++) {
+
+#if 0
+		std::cerr << "on iteration " << k << std::endl;
+		// output L and make sure im not crazy
+		for (int i = 0; i < ncols; i++) {
+			for (int j = 0; j < ncols; j++) {
+				std::cerr << L.coeff(i, j) << " ";
+			}
+			std::cerr << std::endl;
+		}
+		std::cerr << std::endl << std::endl;
+#endif
+
+#if 0
+		std::cerr << "on iteration " << k << std::endl;
+		// output m_list and make sure im not crazy
+		for (int i = 0; i < ncols; i++) {
+			for (int j : L.m_list[i]) {
+				std::cerr << j << " ";
+			}
+			std::cerr << std::endl;
+		}
+		std::cerr << std::endl;
+#endif
+
+		// need to pivot on ((A*M(:,p(dd)))'*M(:,p(dd:end)))';
+		// or, M'(:, p(dd)) * (A M(:, p(dd:end))) = l_{pk}' * [A l_{pk} A l_{p{k+1}) ... A l_pn]
+		// this is equivalent to pivoting on the D[j..n] vector
+		pivot_struct piv_info = pivoter->find_pivot(k);
+		
+		piv_info.size_two = false;
+		// swap necessary rows and columns
+		if (piv_info.size_two) {
+			pivot(k+1, piv_info.r);
+		} else {
+			// figure out list of D[k]'s to compute and update
+			pivoter->flush_col(A1, A1_idx, 0);
+
+			for (int j : A1_idx) {
+				D[j] = A1[j];
+			}
+
+			// do swaps for pivots if necessary
+			if (piv_info.r != k) {
+				pivot(k, piv_info.r);
+				std::swap(D[k], D[piv_info.r]);
+
+#if 0
+				std::cerr << "On iter " << k << " we chose diagonal pivot " << piv_info.r << std::endl;
+				std::cerr << "Diagonal pivot value: " << D[k] << std::endl;
+#endif
+
+#if 0
+				std::cerr << "current permutation" << std::endl;
+				for (int i = 0; i < ncols; i++) {
+					std::cerr << p[i] << " ";
+				}
+				std::cerr << std::endl;
+#endif
+			}
+
+#if 0	
+			std::cerr << "Diagonal pivot value: " << D[k] << std::endl;
+			for (int i = k; i < ncols; i++) {
+				std::cerr << D[i] << " ";
+			}
+			std::cerr << endl;
+#endif
+
+#if 0	
+			std::cerr << "Current matrix: " << std::endl;
+			for (int i = 0; i < ncols; i++) {
+				for (int j = 0; j < ncols; j++) {
+					std::cerr << coeff(p[i], p[j]) << " ";
+				}
+				std::cerr << std::endl;
+			}
+			std::cerr << endl;
+#endif
+			// half-epsilon regularization
+			if (std::abs(D[k]) < eps) {
+#if 0
+				std::cerr << "Diagonal pivot value: " << D[k] << std::endl;
+				std::cerr << "Pivot value too low. Using half-epsilon regularization..." << std::endl;
+#endif
+				D[k] = eps * normA;
+			}
+
+			for (int j : A1_idx) {
+				if (j == k) continue;
+				if (std::abs(D[j]) < eps) continue;
+
+				// Compute new schur complement
+				col_wrapper<el_type> lk(L.m_x[k].data(), L.m_idx[k].data(), L.m_x[k].size()),
+									 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
+				sparse_vec_add(1.0, lj, -D[j] / D[k], lk, work, curr_nnzs);
+
+				// Apply dropping rules
+				drop_tol(work, curr_nnzs, par.tol, j);
+
+				// Add existing nnz into set
+				for (int i : L.m_idx[j]) {
+					seen1[i] = true;
+				}
+
+				L.m_x[j].swap(work);
+				L.m_idx[j].swap(curr_nnzs);
+
+				// Add to m_list if needed
+				for (int i : L.m_idx[j]) {
+					if (!seen1[i]) {
+						L.m_list[i].insert(j);
+					}
+					seen1[i] = false;
+				}
+
+				// Undo set additions
+				for (int i : curr_nnzs) {
+					if (seen1[i]) {
+						L.m_list[i].erase(j);
+					}
+					seen1[i] = false;
+				}
+			}
+			
+			advance_list(k);
+		}
 	}
 
-	//assign number of non-zeros in L to L.nnz_count
+	// assign number of non-zeros in L to L.nnz_count
 	L.nnz_count = count;
+
+	// apply permutations accumulated from pivoting
+	sym_perm(p);
 }
 
 #endif

@@ -7,71 +7,71 @@
 template<class el_type>
 class bkp_pivoter : public pivot_strategy<el_type> {
 public:
-	bkp_pivoter(lilc_matrix<el_type>* A_, lilc_matrix<el_type>* L_, const vector<int>* p_) 
-		: m_beta(1.0), pivot_strategy<el_type>(A_, L_, p_) {
+	bkp_pivoter(lilc_matrix<el_type>* A_, lilc_matrix<el_type>* L_, const vector<int>* p_, const vector<int>* pinv_) 
+		: m_beta(1.0), pivot_strategy<el_type>(A_, L_, p_, pinv_) {
 		m_alpha = (1 + std::sqrt(17.0)) / 8;
 	}
 	
-	bkp_pivoter(lilc_matrix<el_type>* A_, lilc_matrix<el_type>* L_, const vector<int>* p_, double beta) 
-		: pivot_strategy<el_type>(A_, L_, p_) {
+	bkp_pivoter(lilc_matrix<el_type>* A_, lilc_matrix<el_type>* L_, const vector<int>* p_, const vector<int>* pinv_, double beta) 
+		: pivot_strategy<el_type>(A_, L_, p_, pinv_) {
 		m_beta = beta;
 		m_alpha = (1 + std::sqrt(17.0)) / 8;
 	}
 
-	void set_beta(double beta) {
-		// Compute this with bisection
-		m_alpha = (1 + std::sqrt(17.0)) / 8;
-	}
-
-	pivot_struct find_pivot(int col) { 
+	pivot_struct find_pivot(int col) {
 		update_col(A1, A1_idx, col);
-		return pivot_struct(false, col);
-		/*
+
 		// r: unpermuted index
 		double a11 = 0, w1 = 0;
-		int r = 0;
+		int r = col;
 
-		vector<el_type>& val = mat->m_x[p[col]];
-		vector<el_type>& ptr = mat->m_idx[p[col]];
-		for (int i = 0; i < ptr.size(); i++) {
-			if (ptr[i] == p[col]) {
-				a11 = std::abs(val[i]);
+		for (int j : A1_idx) {
+			el_type el = std::abs(A1[j]);
+			if (j == col) {
+				a11 = el;
 			}
 
-			if (std::abs(val[i]) > w1) {
-				w1 = std::abs(val[i]);
-				r = ptr[i];
+			if (el > w1) {
+				w1 = el;
+				r = j;
 			}
 		}
 
-		if (a11 > m_alpha * m_beta * w1) {
+		if (a11 > m_alpha * m_beta * w1 + m_eps) {
 			return pivot_struct(false, col);
 		} else {
-			// r_: unpermuted index
+			update_col(Ar, Ar_idx, r);
+
 			double wr = 0, arr = 0;
 			int r_ = 0;
-			val = mat->m_x[p[r]];
-			ptr = mat->m_idx[p[r]];
-			for (int i = 0; i < ptr.size(); i++) {
-				if (std::abs(val[i]) > m_beta * w1) {
-					wr = std::abs(val[i]);
-					r_ = ptr[i];
+			for (int j : Ar_idx) {
+				el_type el = std::abs(Ar[j]);
+				if (j == r) {
+					arr = el;
 				}
 
-				if (ptr[i] == p[r]) {
-					arr = std::abs(val[i]);
+				if (el > m_beta * w1) {
+					wr = el;
+					r_ = j;
 				}
 			}
-
-			if (a11 * wr >= m_alpha * pow(m_beta * w1, 2.0)) {
+			
+#if 0
+			std::cerr << " candidate " << col << " " << r << std::endl;
+#endif
+			if (a11 * wr > m_alpha * pow(m_beta * w1, 2.0) + m_eps) {
 				return pivot_struct(false, col);
-			} else if (arr >= m_alpha * m_beta * wr) {
+			} else if (arr > m_alpha * m_beta * wr + m_eps) {
+				A1.swap(Ar);
+				A1_idx.swap(Ar_idx);
 				return pivot_struct(false, r);
 			} else {
-				return pivot_struct(true, r);
+				//return pivot_struct(true, r);
+				A1.swap(Ar);
+				A1_idx.swap(Ar_idx);
+				return pivot_struct(false, r);
 			}
 		}
-		*/
 	}
 
 private:

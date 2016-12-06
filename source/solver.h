@@ -163,7 +163,7 @@ class solver {
 		*/
 		solver() {
 			msg_lvl = message_level::STATISTICS;
-            piv_type = pivot_type::BKP;
+            piv_type = pivot_type::ROOK;
 			reorder_type = reordering_type::AMD;
 			equil_type = equilibration_type::BUNCH;
 			solve_type = solver_type::SQMR;

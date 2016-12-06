@@ -149,6 +149,29 @@ el_type sparse_dot_prod(const col_wrapper<el_type>& a, const col_wrapper<el_type
 	return res;
 }
 
+// version of sparse_dot_prod where a permutation is applied to a
+template<class el_type>
+el_type sparse_dot_prod(const col_wrapper<el_type>& a, const col_wrapper<el_type>& b, const vector<int>* p) {
+	static vector<el_type> tmp;
+	tmp.resize(p->size());
+
+	el_type res = 0;
+	for (int i = 0; i < a.len; i++) {
+		tmp[(*p)[a.ptr[i]]] = a.val[i];
+	}
+
+
+	for (int i = 0; i < b.len; i++) {
+		res += b.val[i] * tmp[b.ptr[i]];
+	}
+	
+	for (int i = 0; i < a.len; i++) {
+		tmp[(*p)[a.ptr[i]]] = 0;
+	}
+
+	return res;
+}
+
 // PRECONDITION: a and b have sorted indices
 template<class el_type>
 int sparse_vec_add(el_type c0, const col_wrapper<el_type>& a, el_type c1, const col_wrapper<el_type>& b, vector<el_type>& val, vector<int>& ptr) {
