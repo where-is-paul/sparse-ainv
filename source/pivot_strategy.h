@@ -47,6 +47,7 @@ protected:
 	void update_col(vector<el_type>& v, vector<int>& idx, int k) {
 		int pk = (*p)[k];
 		for (int j : A->m_idx[pk]) {
+			j = (*pinv)[j];
 			seen0.add_set(L->m_list[j]);
 		}
 		seen0.add_single(k);

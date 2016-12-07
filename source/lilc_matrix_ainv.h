@@ -71,8 +71,34 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	vector<int> A1_idx, Ar_idx;
 	vector<el_type> A1(ncols), Ar(ncols);
 
+	// ------------ functions for ordering by number of non zeros -------------//
+	// Tracks number of non-zeros per col so we can sort by sparsity
+	vector<int> num_nz(ncols, 1);
+	auto comp = [&](const int i, const int j) {
+		if (num_nz[i] == num_nz[j]) return i < j;
+		return num_nz[i] < num_nz[j];
+	};
+
+	set<int, decltype(comp)> q(comp);
+	for (int i = 0; i < ncols; i++) {
+		q.insert(i);
+	}
+
 	//------------------- convenience functions for pivoting ------------------//
 	auto pivot = [&](int k, int r) {
+		if (k == r) return;
+
+		if (q.count(k)) {
+			q.erase(k);
+			num_nz[k] = static_cast<int>(L.m_idx[r].size());
+			q.insert(k);
+		}
+
+		if (q.count(r)) {
+			q.erase(r);
+			num_nz[r] = static_cast<int>(L.m_idx[k].size());
+			q.insert(r);
+		}
 #if 0
 		std::cerr << "-----------pre pivot---------- " << std::endl;
 		// output m_list and make sure im not crazy
@@ -146,6 +172,8 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
+		pivot(k, *q.begin());
+		q.erase(q.begin());
 
 #if 0
 		std::cerr << "on iteration " << k << std::endl;
@@ -157,6 +185,16 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			std::cerr << std::endl;
 		}
 		std::cerr << std::endl << std::endl;
+
+		bool sane = true;
+		for (int i = 0; i < ncols; i++) {
+			for (int j = 0; j < int(L.m_idx[i].size())-1; j++) {
+				if (L.m_idx[i][j] > L.m_idx[i][j+1]) {
+					sane = false;
+				}
+			}
+		}
+		std::cerr << "sanity check: " << sane << endl;
 #endif
 
 #if 0
@@ -183,6 +221,9 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		} else {
 			// figure out list of D[k]'s to compute and update
 			pivoter->flush_col(A1, A1_idx, 0);
+
+			// TODO: Apply dropping rules to pivot col
+			//drop_tol_dense(A1, A1_idx, par.tol, piv_info.r);
 
 			for (int j : A1_idx) {
 				D[j] = A1[j];
@@ -215,7 +256,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			std::cerr << endl;
 #endif
 
-#if 0	
+#if 0
 			std::cerr << "Current matrix: " << std::endl;
 			for (int i = 0; i < ncols; i++) {
 				for (int j = 0; j < ncols; j++) {
@@ -243,7 +284,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 									 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
 				sparse_vec_add(1.0, lj, -D[j] / D[k], lk, work, curr_nnzs);
 
-				// Apply dropping rules
+				// Apply dropping rules to schur complement
 				drop_tol(work, curr_nnzs, par.tol, j);
 
 				// Add existing nnz into set
@@ -269,6 +310,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 					}
 					seen1[i] = false;
 				}
+
+				q.erase(j);
+				num_nz[j] = static_cast<int>(L.m_idx[j].size());
+				q.insert(j);
 			}
 			
 			advance_list(k);

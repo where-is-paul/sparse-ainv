@@ -21,9 +21,8 @@ public:
 	pivot_struct find_pivot(int col) {
 		update_col(A1, A1_idx, col);
 
-		// r: unpermuted index
 		double a11 = 0, w1 = 0;
-		int r = col;
+		int r = -1;
 
 		for (int j : A1_idx) {
 			el_type el = std::abs(A1[j]);
@@ -33,32 +32,31 @@ public:
 
 			if (el > w1) {
 				w1 = el;
-				r = j;
 			}
 		}
 
 		if (a11 > m_alpha * m_beta * w1 + m_eps) {
 			return pivot_struct(false, col);
 		} else {
-			update_col(Ar, Ar_idx, r);
-
 			double wr = 0, arr = 0;
-			int r_ = 0;
+			for (int j : A1_idx) {
+				el_type el = std::abs(A1[j]);
+				if (el >= m_beta * w1 - m_eps) {
+					r = j;
+					break;
+				}
+			}
+
+			update_col(Ar, Ar_idx, r);
 			for (int j : Ar_idx) {
 				el_type el = std::abs(Ar[j]);
 				if (j == r) {
 					arr = el;
-				}
-
-				if (el > m_beta * w1) {
+				} else if (el > wr) {
 					wr = el;
-					r_ = j;
 				}
 			}
-			
-#if 0
-			std::cerr << " candidate " << col << " " << r << std::endl;
-#endif
+		
 			if (a11 * wr > m_alpha * pow(m_beta * w1, 2.0) + m_eps) {
 				return pivot_struct(false, col);
 			} else if (arr > m_alpha * m_beta * wr + m_eps) {

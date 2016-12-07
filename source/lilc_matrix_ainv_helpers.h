@@ -45,10 +45,10 @@ inline void vector_sum(double a, vector<el_type>& v, double b, vector<el_type>& 
 	\return the norm of v.
 */
 template <class el_type>
-inline double norm(vector<el_type>& v, vector<int>& curr_nnzs, el_type p = 1) { 
+inline double norm(const vector<el_type>& v, const vector<int>& curr_nnzs, el_type p = 1) { 
 	el_type res = 0;
-	for (idx_it it = curr_nnzs.begin(), end = curr_nnzs.end(); it != end; ++it) {
-		res += pow(abs(v[*it]), p);  
+	for (int j : curr_nnzs) {
+		res += pow(abs(v[j]), p);  
 	}
 	
 	return pow(res, 1/p);
@@ -60,7 +60,7 @@ inline double norm(vector<el_type>& v, vector<int>& curr_nnzs, el_type p = 1) {
 	\return the norm of v.
 */
 template <class el_type>
-inline double norm(vector<el_type>& v, el_type p = 1) { 
+inline double norm(const vector<el_type>& v, el_type p = 1) { 
 	el_type res = 0;
 	for (int i = 0; i < v.size(); i++) {
 		res += pow(abs(v[i]), p);
@@ -126,6 +126,23 @@ inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double
 	curr_nnzs.swap(nnzs);
 }
 
+// Applies dropping rule to dense vals vector
+template <class el_type>
+inline void drop_tol_dense(vector<el_type>& vals, vector<int>& curr_nnzs, const double& tol, int keep) { 
+	static vector<int> nnzs;
+
+	//determine dropping tolerance. all elements with value less than tolerance = tol * norm(v) is dropped.
+	el_type tolerance = tol * norm<el_type>(vals, curr_nnzs, 1);
+
+	nnzs.clear();
+	for (int i = 0; i < curr_nnzs.size(); i++) {
+		if (curr_nnzs[i] != keep && std::abs(vals[i]) < tolerance) continue;
+		nnzs.push_back(curr_nnzs[i]);
+	}
+
+	curr_nnzs.swap(nnzs);
+}
+
 // PRECONDITION: a and b have sorted indices
 template<class el_type>
 el_type sparse_dot_prod(const col_wrapper<el_type>& a, const col_wrapper<el_type>& b) {
@@ -158,17 +175,20 @@ el_type sparse_dot_prod(const col_wrapper<el_type>& a, const col_wrapper<el_type
 	el_type res = 0;
 	for (int i = 0; i < a.len; i++) {
 		tmp[(*p)[a.ptr[i]]] = a.val[i];
+		//std::cerr << "doing dot prod... setting " << a.val[i] << " at " << (*p)[a.ptr[i]] << std::endl;
 	}
 
 
 	for (int i = 0; i < b.len; i++) {
 		res += b.val[i] * tmp[b.ptr[i]];
+		//std::cerr << "fetching from " << b.ptr[i] << " with " << b.val[i] << " " << b.val[i] * tmp[b.ptr[i]] << std::endl;
 	}
 	
 	for (int i = 0; i < a.len; i++) {
 		tmp[(*p)[a.ptr[i]]] = 0;
 	}
 
+	//std::cerr << "res: " << res << endl;
 	return res;
 }
 
