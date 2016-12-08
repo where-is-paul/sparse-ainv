@@ -28,6 +28,10 @@ public:
 		m_eps = std::sqrt(std::numeric_limits<el_type>::epsilon());
 	}
 
+	void set_regularization(double reg) {
+		m_reg = reg;
+	}
+
 	virtual pivot_struct find_pivot(int col) { 
 		update_col(A1, A1_idx, col);
 		return pivot_struct(false, col);
@@ -37,9 +41,11 @@ public:
 		if (col == 0) {
 			v.swap(A1);
 			idx.swap(A1_idx);
+			clean(A1, A1_idx);
 		} else if (col == 1) {
 			v.swap(Ar);
 			idx.swap(Ar_idx);
+			clean(Ar, Ar_idx);
 		}
 	}
 
@@ -60,6 +66,11 @@ protected:
 		}
 	}
 
+	void clean(vector<el_type>& v, vector<int>& idx) {
+		for (int j : idx) v[j] = 0;
+		idx.clear();
+	}
+
 	vector<el_type> A1, Ar;
 	vector<int> A1_idx, Ar_idx;
 	lilc_matrix<el_type> *A, *L;
@@ -67,7 +78,7 @@ protected:
 
 	set_unioner seen0;
 
-	double m_eps;
+	double m_eps, m_reg;
 };
 
 #endif

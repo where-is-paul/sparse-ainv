@@ -25,6 +25,9 @@ public:
 		int r = -1;
 
 		for (int j : A1_idx) {
+			if (j < col) {
+				continue;
+			}
 			el_type el = std::abs(A1[j]);
 			if (j == col) {
 				a11 = el;
@@ -35,11 +38,45 @@ public:
 			}
 		}
 
-		if (a11 > m_alpha * m_beta * w1 + m_eps) {
+#if 0
+		w1 = 1e9;
+		for (int j : A1_idx) {
+			el_type el = std::abs(A1[j]);
+			if (j == col) {
+				a11 = el;
+				continue;
+			}
+
+			if (el < 1e-8) continue;
+			if (el < w1) {
+				w1 = el;
+				r = j;
+			}
+		}
+
+		std::cerr << "choosing " << r << " as pivot on col " << col << " with val " << w1 << std::endl;
+		for (int j : A1_idx) {
+			std::cerr << j << ":" << A1[j] << " ";
+		}
+		std::cerr << std::endl;
+
+		update_col(Ar, Ar_idx, r);
+		return pivot_struct(true, r);
+#endif
+
+		// regularization
+		double bound = 64 * m_eps * m_reg;
+		if (std::max(a11, w1) <= bound) {
+			A1[col] = bound;
+			return pivot_struct(false, col);
+		} else if (a11 > m_alpha * m_beta * w1 + m_eps) {
 			return pivot_struct(false, col);
 		} else {
 			double wr = 0, arr = 0;
 			for (int j : A1_idx) {
+				if (j < col) {
+					continue;
+				}
 				el_type el = std::abs(A1[j]);
 				if (el >= m_beta * w1 - m_eps) {
 					r = j;
@@ -49,6 +86,7 @@ public:
 
 			update_col(Ar, Ar_idx, r);
 			for (int j : Ar_idx) {
+				if (j < col) continue;
 				el_type el = std::abs(Ar[j]);
 				if (j == r) {
 					arr = el;
@@ -64,10 +102,7 @@ public:
 				A1_idx.swap(Ar_idx);
 				return pivot_struct(false, r);
 			} else {
-				//return pivot_struct(true, r);
-				A1.swap(Ar);
-				A1_idx.swap(Ar_idx);
-				return pivot_struct(false, r);
+				return pivot_struct(true, r);
 			}
 		}
 	}
