@@ -23,7 +23,7 @@ DEFINE_string(pivot, "rook", "Determines what kind of pivoting algorithm will be
 		" during the factorization. Choices are 'rook' and 'bunch'. The default is 'rook'.");
 
 DEFINE_string(reordering, "amd", "Determines what sort of preordering will be used"
-		" on the matrix. Choices are 'amd', 'rcm', and 'none'.");
+		" on the matrix. Choices are 'amd', 'rcm', 'mc64', and 'none'.");
 
 DEFINE_string(equil, "bunch", "Decides if the matrix should be equilibriated before factoring is done. "
 		"Options are 'bunch' and 'none'. If the option is 'bunch', the matrix is equilibrated "

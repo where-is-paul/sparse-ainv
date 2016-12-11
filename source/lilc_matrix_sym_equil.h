@@ -49,4 +49,24 @@ void lilc_matrix<el_type> :: sym_equil() {
 	}
 }
 
+template<class el_type>
+void lilc_matrix<el_type> :: sym_equil(const elt_vector_type& s) {
+
+	//find termination points for loops with binary search later.
+	int i, ncols = n_cols();
+	
+	S.resize(ncols, 0);
+	for (int i = 0; i < ncols; i++) {
+		S[i] = s[i];
+	}
+	
+	// assumes full matrix
+	for (i = 0; i < ncols; i++) {
+		for (int j = 0; j < m_x[i].size(); j++) {
+			int idx = m_idx[i][j];
+			m_x[i][j] *= S[i] * S[idx];
+		}
+	}
+}
+
 #endif // _LIL_MATRIX_SYM_EQUIL_H_

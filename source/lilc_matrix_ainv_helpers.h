@@ -112,7 +112,7 @@ inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double
 	static vector<int> nnzs;
 
 	//determine dropping tolerance. all elements with value less than tolerance = tol * norm(v) is dropped.
-	el_type tolerance = tol * norm<el_type>(vals);
+	el_type tolerance = std::min(5e-1, tol * norm<el_type>(vals));
 
 	work.clear();
 	nnzs.clear();

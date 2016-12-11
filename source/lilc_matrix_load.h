@@ -107,8 +107,6 @@ bool lilc_matrix<el_type> :: load (const int* ptr, const int* row, const el_type
 	int n_rows = dim, n_cols = dim;
 	
 	resize(n_rows, n_cols);
-	std::fill(row_first.begin(), row_first.end(), 0); //a bit of optimization could be used here since resize sets all elem in first to 1
-	std::fill(col_first.begin(), col_first.end(), 0); //a bit of optimization could be used here since resize sets all elem in first to 1
 	
 	int count = 0;
 	for (int i = 0; i < dim; i++) {
@@ -127,8 +125,8 @@ bool lilc_matrix<el_type> :: load (const int* ptr, const int* row, const el_type
 				++count;
 			}
 
-			list[i].insert(row[j]);
-			if (i != row[j]) list[row[j]].insert(i);
+			m_list[i].insert(row[j]);
+			if (i != row[j]) m_list[row[j]].insert(i);
 		}
 	}
 

@@ -179,7 +179,17 @@ public:
 		\param perm An empty permutation vector (filled on function completion).
 	*/
 	inline void sym_amd(vector<int>& perm);
+	
+	/*! \brief Returns MC64 ordering of the matrix A (stored in perm), and an optional scaling. 
 		
+		A detailed description of this function as well as all its subfunctions can be found at http://www.hsl.rl.ac.uk/catalogue/hsl_mc64.html
+		\param perm An empty permutation vector (filled on function completion).
+		\returns An optional scaling vector that scales diagonal entries to 1 and off diagonals to < 1 (in absolute value).
+		
+		NOTE: Currently supports doubles only.
+	*/
+	inline std::vector<double> sym_mc64(vector<int>& perm);
+
 	/*! \brief Given a permutation vector perm, A is permuted to P'AP, where P is the permutation matrix associated with perm. 
 		\param perm the permutation vector.
 	*/
@@ -190,6 +200,11 @@ public:
 		This algorithm is based on the one outlined in "Equilibration of Symmetric Matrices in the Max-Norm" by Bunch (1971).
 	*/
 	void sym_equil();
+
+	/*!	\brief The symmetric matrix A is equilibrated by the input S and the symmetric equilibrated matrix SAS is stored in A.
+		\param The diagonal of the scaling matrix S.
+	*/
+	void sym_equil(const elt_vector_type& S);
 	
 	//----Factorizations----//
 	/*! \brief Performs an LDL' factorization of this matrix. 
@@ -259,25 +274,6 @@ public:
 		}
 	}
 	
-	/*! \brief Performs a symmetric permutation between row/col k & r of A.
-	
-		\param s a struct containing temporary variables needed during pivoting.
-		\param in_set a bitset needed for unordered unions during pivoting.
-		\param L the lower triangular factor of A.
-		\param k index of row/col k.
-		\param r index of row/col r.
-	*/
-	inline void pivot(swap_struct<el_type>& s, vector<bool>& in_set, lilc_matrix<el_type>& L, const int& k, const int& r);
-    
-    /*! \brief The inplace version of the function above.
-    
-        \param s a struct containing temporary variables needed during pivoting.
-		\param in_set a bitset needed for unordered unions during pivoting.
-		\param k index of row/col k.
-		\param r index of row/col r.
-    */
-	inline void pivotA(swap_struct<el_type>& s, vector<bool>& in_set, const int& k, const int& r);
-	
 	//----IO Functions----//
 	
 	/*! \brief Returns a string representation of A, with each column and its corresponding indices & non-zero values printed.
@@ -312,6 +308,42 @@ public:
 	*/
 	bool save(std::string filename, bool sym = false);
 
+	/*! \brief Converts a matrix to CSC form, includes *only* the lower triangular part of the matrix.
+		\param val A vector that stores the non-zero values.
+		\param row_ind The row indices of each value.
+		\param col_ptr The length of each column in row_ind.
+	*/
+	bool to_csc(elt_vector_type& val, idx_vector_type& row_ind, idx_vector_type& col_ptr) {
+		val.clear();
+		row_ind.clear();
+		col_ptr.clear();
+		
+		int last = 0;
+		col_ptr.push_back(last);
+		for (int i = 0; i < m_n_cols; i++) {
+			int col_len = m_idx[i].size();
+			if (col_len != m_x[i].size()) {
+				return false; // malformed input matrix
+			}
+			
+			std::vector<std::pair<int, el_type> > col_vals;
+			for (int j = 0; j < col_len; j++) {
+				if (m_idx[i][j] < i) continue;
+				col_vals.push_back(std::make_pair(m_idx[i][j], m_x[i][j]));
+			}
+			std::sort(col_vals.begin(), col_vals.end());
+
+			last += col_vals.size();
+			col_ptr.push_back(last);
+			
+			for (int j = 0; j < col_vals.size(); j++) {
+				val.push_back(m_x[i][j]);
+				row_ind.push_back(m_idx[i][j]);
+			}
+		}
+		
+		return true;
+	}
 };
 
 //------------------ include files for class functions -------------------//
@@ -320,11 +352,11 @@ public:
 #include <lilc_matrix_find_root.h>
 #include <lilc_matrix_sym_rcm.h>
 #include <lilc_matrix_sym_amd.h>
+#include <lilc_matrix_sym_mc64.h>
 #include <lilc_matrix_sym_perm.h>
 #include <lilc_matrix_sym_equil.h>
 #include <lilc_matrix_ainv_helpers.h>
 #include <lilc_matrix_ainv.h>
-#include <lilc_matrix_pivot.h>
 #include <lilc_matrix_load.h>
 #include <lilc_matrix_save.h>
 #include <lilc_matrix_to_string.h>

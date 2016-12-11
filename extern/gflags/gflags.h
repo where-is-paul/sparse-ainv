@@ -82,6 +82,9 @@
 #define __attribute__(A) /* do nothing */
 #endif
 
+#ifdef USE_STRINGS_H
+#include <strings.h>
+#endif
 #include <string>
 #include <vector>
 #include "gflags_declare.h"    // IWYU pragma: export

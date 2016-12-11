@@ -5,6 +5,13 @@
 #include <bkp_pivoter.h>
 #include <set_unioner.h>
 
+#include <map>
+
+#if 0
+#include <float.h>
+unsigned int fp_control_state = _controlfp(_EM_INEXACT, _MCW_EM);
+#endif
+
 using std::endl;
 using std::cout;
 using std::abs;
@@ -26,7 +33,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 	int count = 0; //the total number of nonzeros stored in L.
 
-	double normA = 0;
+	double normA = 0; // frobenius norm of A
 	// Ensure nnz pattern of A is sorted
 	vector<std::pair<int, el_type>> colval;
 	for (int k = 0; k < ncols; k++) {
@@ -41,8 +48,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			m_x[k][j] = colval[j].second;
 		}
 
-		normA += norm(m_x[k]);
+		double tnorm = norm(m_x[k], 2.0);
+		normA += tnorm * tnorm;
 	}
+	normA = sqrt(normA);
 
 
 	//------------------------------- allocate memory for L and D -------------------------------//
@@ -78,7 +87,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	// Tracks number of non-zeros per col so we can sort by sparsity
 	vector<int> num_nz(ncols, 1);
 	auto comp = [&](const int i, const int j) {
-		if (num_nz[i] == num_nz[j]) return i < j;
+		if (num_nz[i] == num_nz[j]) return pinv[i] < pinv[j];
 		return num_nz[i] < num_nz[j];
 	};
 
@@ -91,18 +100,8 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	auto pivot = [&](int k, int r) {
 		//std::cerr << "swapping " << k << " and " << r << std::endl;
 		if (k == r) return;
-
-		if (q.count(k)) {
-			q.erase(k);
-			num_nz[k] = static_cast<int>(L.m_idx[r].size());
-			q.insert(k);
-		}
-
-		if (q.count(r)) {
-			q.erase(r);
-			num_nz[r] = static_cast<int>(L.m_idx[k].size());
-			q.insert(r);
-		}
+		q.erase(k);
+		q.erase(r);
 #if 0
 		std::cerr << "-----------pre pivot---------- " << std::endl;
 		// output m_list and make sure im not crazy
@@ -143,6 +142,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		// Swap values in A
 		std::swap(p[k], p[r]);
+
+		// Dont ask.
+		q.erase(p[k]);
+		q.erase(p[r]);
 		std::swap(pinv[p[k]], pinv[p[r]]);
 
 		// Swap values in perm vector
@@ -160,12 +163,15 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		std::cerr << "------------------------------- " << std::endl;
 #endif
 
+		num_nz[k] = static_cast<int>(L.m_idx[r].size());
+		num_nz[r] = static_cast<int>(L.m_idx[k].size());
+		q.insert(k);
+		q.insert(r);
+		if (p[k] >= k) q.insert(p[k]);
+		if (p[r] >= k) q.insert(p[r]);
 	};
 
 	auto advance_list = [&](int k) {
-		// increase non-zero count of L
-		count += static_cast<int>(L.m_x[k].size());
-
 		// increment row_first array if needed
 		for (int j : L.m_idx[k]) {
 			while (!L.m_list[j].empty() && *L.m_list[j].begin() <= k) {
@@ -173,7 +179,12 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			}
 		}
 
+		// drop elements of col k
 		q.erase(k);
+		drop_tol(L.m_x[k], L.m_idx[k], par.tol, k);
+		
+		// increase non-zero count of L
+		count += static_cast<int>(L.m_x[k].size());
 	};
 
 	auto update_schur = [&](double coef, int j, int k) {
@@ -181,14 +192,26 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		col_wrapper<el_type> lk(L.m_x[k].data(), L.m_idx[k].data(), L.m_x[k].size()),
 							 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
 
+		if (coef != coef /*|| std::abs(coef) > normA*/) {
+				std::cerr << j << " " << k << " wait wtffff bad coef " << coef << " " << normA << std::endl;
+				//_sleep(100000);
+			}
+
 		sparse_vec_add(1.0, lj, coef, lk, work, curr_nnzs);
 
 		// Apply dropping rules to schur complement
-		drop_tol(work, curr_nnzs, par.tol, j);
+		drop_tol(work, curr_nnzs, 0.1 * par.tol, j);
 
 		for (auto x : work) {
 			if (x != x) {
-				std::cerr << "wait wtffff" << std::endl;
+				//std::cerr << "wait wtffff bad computed valuees" << std::endl;
+				break;
+			}
+		}
+
+		for (int i = 0; i < (int)curr_nnzs.size()-1; i++) {
+			if (curr_nnzs[i] > curr_nnzs[i+1]) {
+				std::cerr << "waitwtfff" << std::endl;
 			}
 		}
 
@@ -225,6 +248,16 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	for (int k = 0; k < ncols; k++) {
 		pivot(k, *q.begin());
 
+		static std::map<int, bool> done;
+		int pcnt = (100*k)/ncols;
+		if (pcnt%5 == 0 && !done[pcnt]) {
+			done[pcnt] = 1;
+			std::cerr << pcnt << " percent complete. ";
+			int cnt = 0;
+			for (int i = 0; i < ncols; i++) cnt += L.m_x[i].size();
+			std::cerr << "nnz(M) = " << cnt << std::endl;
+		}
+
 		//std::cerr << "on iteration " << k << std::endl;
 #if 0
 		std::cerr << "on iteration " << k << std::endl;
@@ -236,16 +269,21 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			std::cerr << std::endl;
 		}
 		std::cerr << std::endl << std::endl;
+#endif
 
+#if 0
 		bool sane = true;
 		for (int i = 0; i < ncols; i++) {
 			for (int j = 0; j < int(L.m_idx[i].size())-1; j++) {
-				if (L.m_idx[i][j] > L.m_idx[i][j+1] || L.m_idx[j] < k || L.m_idx[j+1] < k) {
+				if (L.m_idx[i][j] > L.m_idx[i][j+1]) {
 					sane = false;
 				}
 			}
+			for (int x : L.m_list[i]) {
+				if (x < k) std::cerr << "something went terribly wrong" << std::endl;
+			}
 		}
-		std::cerr << "sanity check: " << sane << endl;
+		if (!sane) std::cerr << "sanity check: " << sane << endl;
 #endif
 
 #if 0
@@ -291,7 +329,12 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		// or, M'(:, p(dd)) * (A M(:, p(dd:end))) = l_{pk}' * [A l_{pk} A l_{p{k+1}) ... A l_pn]
 		// this is equivalent to pivoting on the D[j..n] vector
 		pivot_struct piv_info = pivoter->find_pivot(k);
-		
+
+		//std::cerr << k << std::endl;
+		//if (k == 7917) {
+		//	std::cerr << "at problem point. pivot info: " << piv_info.r << " " << piv_info.size_two << std::endl;
+		//}
+
 		// swap necessary rows and columns
 		if (piv_info.size_two) {
 			// figure out list of D[k]'s to compute and update
@@ -368,6 +411,15 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			D.off_diagonal(k) = Di[0][1];
 			D[k+1] = Di[1][1];
 
+			//if (k == 7917) {
+			//	for (int i = 0; i < 2; i++) {
+			//		for (int j =0 ; j < 2; j++) {
+			//			std::cerr << Di[i][j] << " ";
+			//		}
+			//		std::cerr << std::endl;
+			//	}
+			//}
+
 #if 0
 			for (int i = k; i < 10; i++) {
 				std::cerr << A1[i] << " " << Ar[i] << endl;
@@ -395,6 +447,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				el_type det = Di[0][0] * Di[1][1] - Di[0][1] * Di[1][0];
 				DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
 				DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
+
+				if (det == 0) {
+					std::cerr << "bad det" << std::endl;
+				}
 
 				update_schur(-DinvZ[0] / det, j, k);
 				update_schur(-DinvZ[1] / det, j, k+1);
@@ -447,26 +503,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				std::cerr << "On iter " << k << " we chose diagonal pivot " << piv_info.r << std::endl;
 				std::cerr << "Diagonal pivot value: " << D[k] << std::endl;
 #endif
-
-#if 0
-				std::cerr << "current permutation" << std::endl;
-				for (int i = 0; i < ncols; i++) {
-					std::cerr << p[i] << " ";
-				}
-				std::cerr << std::endl;
-
-		
-				std::cerr << "Current matrix: " << std::endl;
-				for (int i = 0; i < ncols; i++) {
-					for (int j = 0; j < ncols; j++) {
-						std::cerr << coeff(p[i], p[j]) << " ";
-					}
-					std::cerr << std::endl;
-				}
-				std::cerr << endl;
-#endif
 			}
-
 #if 0	
 			std::cerr << "Diagonal pivot value: " << D[k] << std::endl;
 			for (int i = k; i < ncols; i++) {
@@ -479,12 +516,48 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				if (j <= k) continue;
 				//if (std::abs(D[j]) < eps) continue;
 
+				if (D[k] == 0) {
+					std::cerr << "bad dkk" << std::endl;
+				}
+
 				// Compute new schur complement
 				update_schur(-D[j] / D[k], j, k);
 			}
 			
 			advance_list(k);
 		}
+
+#if 0
+		std::cerr << "current permutation" << std::endl;
+		for (int i = 0; i < ncols; i++) {
+			std::cerr << p[i] << " ";
+		}
+		std::cerr << std::endl;
+		std::cerr << "rest of ordering" << std::endl;
+		for (int x : q) {
+			std::cerr << pinv[x] << " ";
+		}
+		std::cerr << endl;
+
+		
+		std::cerr << "Current matrix: " << std::endl;
+		for (int i = 0; i < ncols; i++) {
+			for (int j = 0; j < ncols; j++) {
+				std::cerr << coeff(p[i], p[j]) << " ";
+			}
+			std::cerr << std::endl;
+		}
+		std::cerr << endl;
+
+		std::cerr << "Current factor: " << std::endl;
+		for (int i = 0; i < ncols; i++) {
+			for (int j = 0; j < ncols; j++) {
+				std::cerr << L.coeff(i, j) << " ";
+			}
+			std::cerr << std::endl;
+		}
+		std::cerr << endl;
+#endif
 
 		//std::cerr << "iteration complete" << std::endl;
 	}

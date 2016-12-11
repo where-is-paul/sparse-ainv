@@ -25,7 +25,7 @@ public:
 		L = L_;
 		p = p_;
 		pinv = pinv_;
-		m_eps = std::sqrt(std::numeric_limits<el_type>::epsilon());
+		m_eps = std::numeric_limits<el_type>::epsilon();
 	}
 
 	void set_regularization(double reg) {

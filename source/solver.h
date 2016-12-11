@@ -212,6 +212,8 @@ class solver {
 				reorder_type = reordering_type::RCM;
 			} else if (strcmp(ordering, "amd") == 0) {
 				reorder_type = reordering_type::AMD;
+			} else if (strcmp(ordering, "mc64") == 0) {
+				reorder_type = reordering_type::MC64;
 			} else if (strcmp(ordering, "none") == 0) {
 				reorder_type = reordering_type::NONE;
 			}
@@ -222,6 +224,8 @@ class solver {
 		void set_equil(const char* equil) {
 			if (strcmp(equil, "bunch") == 0) {
 				equil_type = equilibration_type::BUNCH;
+			} else if (strcmp(equil, "mc64") == 0) {
+				equil_type = equilibration_type::MC64;
 			} else if (strcmp(equil, "none") == 0) {
 				equil_type = equilibration_type::NONE;
 			}
@@ -279,15 +283,29 @@ class solver {
 			double dif, total = 0;
 			clock_t start;
 			
-			if (equil_type == equilibration_type::BUNCH) {
+			if (equil_type != equilibration_type::NONE) {
 				start = clock();
-				A.sym_equil();
+				
+				std::string equil_name;
+				if (equil_type == equilibration_type::BUNCH) {
+					A.sym_equil();
+					
+					equil_name = "Bunch";
+				} else if (equil_type == equilibration_type::MC64) {
+					vector<el_type> scale = A.sym_mc64(perm);
+					A.sym_equil(scale);	
+					perm.clear();
+					
+					equil_name = "MC64";
+				}
+			
 				dif = clock() - start; total += dif; 
-				if (msg_lvl) printf("  Equilibration:\t\t%.3f seconds.\n", dif/CLOCKS_PER_SEC);
+				printf("  Equilibration (%s):\t\t%.3f seconds.\n", equil_name.c_str(), dif/CLOCKS_PER_SEC);
 			}
 
 			if (reorder_type != reordering_type::NONE) {
 				start = clock();
+				
 				std::string perm_name;
 				switch (reorder_type) {
 					case reordering_type::AMD:
@@ -298,15 +316,19 @@ class solver {
 						A.sym_rcm(perm);
 						perm_name = "RCM";
 						break;
+					case reordering_type::MC64:
+						A.sym_mc64(perm);
+						perm_name = "MC64";
+						break;
 				}
 				
 				dif = clock() - start; total += dif;
-				if (msg_lvl) printf("  %s:\t\t\t\t%.3f seconds.\n", perm_name.c_str(), dif/CLOCKS_PER_SEC);
+				printf("  %s:\t\t\t\t%.3f seconds.\n", perm_name.c_str(), dif/CLOCKS_PER_SEC);
 				
 				start = clock();
 				A.sym_perm(perm);
 				dif = clock() - start; total += dif;
-				if (msg_lvl) printf("  Permutation:\t\t\t%.3f seconds.\n", dif/CLOCKS_PER_SEC);
+				printf("  Permutation:\t\t\t%.3f seconds.\n", dif/CLOCKS_PER_SEC);
 			} else {
 				// no permutation specified, store identity permutation instead.
 				for (int i = 0; i < A.n_cols(); i++) {

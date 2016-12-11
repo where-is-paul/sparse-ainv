@@ -13,7 +13,14 @@ public:
 	}
 
 	pivot_struct find_pivot(int col) { 
-		update_col(A1, A1_idx, col);
+		this->update_col(this->A1, this->A1_idx, col);
+		// regularization
+		double bound = 64 * this->m_eps * this->m_reg;
+		if (this->A1[col] <= bound) {
+			this->A1[col] = bound;
+			return pivot_struct(false, col);
+		}
+
 		return pivot_struct(false, col);
 	}
 };
