@@ -294,7 +294,7 @@ class solver {
 				} else if (equil_type == equilibration_type::MC64) {
 					vector<el_type> scale = A.sym_mc64(perm);
 					A.sym_equil(scale);	
-					perm.clear();
+					//perm.clear();
 					
 					equil_name = "MC64";
 				}
@@ -317,7 +317,9 @@ class solver {
 						perm_name = "RCM";
 						break;
 					case reordering_type::MC64:
-						A.sym_mc64(perm);
+						if (equil_type != equilibration_type::MC64) {
+							A.sym_mc64(perm);
+						}
 						perm_name = "MC64";
 						break;
 				}

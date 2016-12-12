@@ -337,8 +337,8 @@ public:
 			col_ptr.push_back(last);
 			
 			for (int j = 0; j < col_vals.size(); j++) {
-				val.push_back(m_x[i][j]);
-				row_ind.push_back(m_idx[i][j]);
+				val.push_back(col_vals[j].second);
+				row_ind.push_back(col_vals[j].first);
 			}
 		}
 		

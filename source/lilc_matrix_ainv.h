@@ -250,7 +250,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		static std::map<int, bool> done;
 		int pcnt = (100*k)/ncols;
-		if (pcnt%5 == 0 && !done[pcnt]) {
+		if (pcnt%10 == 0 && !done[pcnt]) {
 			done[pcnt] = 1;
 			std::cerr << pcnt << " percent complete. ";
 			int cnt = 0;
