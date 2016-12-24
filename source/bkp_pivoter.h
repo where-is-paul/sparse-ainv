@@ -111,9 +111,9 @@ public:
 				return pivot_struct(false, r);
 			} else {
 				// TODO: IS THIS NEEDED?
-				if (find(A1_idx.begin(), A1_idx.end(), r) == A1_idx.end()) {
-					A1_idx.push_back(r);
-					A1[r] = 0;
+				if (std::find(A1_idx.begin(), A1_idx.end(), r) == A1_idx.end()) {
+					this->A1_idx.push_back(r);
+					this->A1[r] = 0;
 				}
 #if 0
 				assert(std::abs(A1[r] - Ar[col]) < 1e-3);
