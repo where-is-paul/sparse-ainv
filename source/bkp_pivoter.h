@@ -111,7 +111,7 @@ public:
 				return pivot_struct(false, r);
 			} else {
 				// TODO: IS THIS NEEDED?
-				if (std::find(A1_idx.begin(), A1_idx.end(), r) == A1_idx.end()) {
+				if (std::find(this->A1_idx.begin(), this->A1_idx.end(), r) == this->A1_idx.end()) {
 					this->A1_idx.push_back(r);
 					this->A1[r] = 0;
 				}
