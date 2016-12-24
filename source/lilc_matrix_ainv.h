@@ -87,7 +87,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	// Tracks number of non-zeros per col so we can sort by sparsity
 	vector<int> num_nz(ncols, 1);
 	auto comp = [&](const int i, const int j) {
-		if (num_nz[i] == num_nz[j]) return pinv[i] < pinv[j];
+		if (num_nz[i] == num_nz[j]) return p[i] > p[j];
 		return num_nz[i] < num_nz[j];
 	};
 
@@ -97,6 +97,17 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	}
 
 	//------------------- convenience functions for pivoting ------------------//
+	auto pivot_vec = [&](int k, int r, vector<el_type>& v, vector<int>& idx) {
+		for (int i = 0; i < idx.size(); i++) {
+			if (idx[i] == k) {
+				idx[i] = r;
+			} else if (idx[i] == r) {
+				idx[i] = k;
+			}
+		}
+		std::swap(v[k], v[r]);
+	};
+
 	auto pivot = [&](int k, int r) {
 		//std::cerr << "swapping " << k << " and " << r << std::endl;
 		if (k == r) return;
@@ -144,8 +155,8 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		std::swap(p[k], p[r]);
 
 		// Dont ask.
-		q.erase(p[k]);
-		q.erase(p[r]);
+		//q.erase(p[k]);
+		//q.erase(p[r]);
 		std::swap(pinv[p[k]], pinv[p[r]]);
 
 		// Swap values in perm vector
@@ -165,10 +176,11 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		num_nz[k] = static_cast<int>(L.m_idx[r].size());
 		num_nz[r] = static_cast<int>(L.m_idx[k].size());
+		
 		q.insert(k);
 		q.insert(r);
-		if (p[k] >= k) q.insert(p[k]);
-		if (p[r] >= k) q.insert(p[r]);
+		//if (p[k] >= k) q.insert(p[k]);
+		//if (p[r] >= k) q.insert(p[r]);
 	};
 
 	auto advance_list = [&](int k) {
@@ -200,6 +212,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		sparse_vec_add(1.0, lj, coef, lk, work, curr_nnzs);
 
 		// Apply dropping rules to schur complement
+		// Should I apply dropping rules after applying both columns???
 		drop_tol(work, curr_nnzs, 0.1 * par.tol, j);
 
 		for (auto x : work) {
@@ -246,7 +259,11 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
-		pivot(k, *q.begin());
+		//std::vector<int> rest(q.begin(), q.end());
+		int nk = *q.begin();
+		if (num_nz[nk] < num_nz[k]/2) {
+			pivot(k, nk);
+		}
 
 		static std::map<int, bool> done;
 		int pcnt = (100*k)/ncols;
@@ -254,8 +271,13 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			done[pcnt] = 1;
 			std::cerr << pcnt << " percent complete. ";
 			int cnt = 0;
-			for (int i = 0; i < ncols; i++) cnt += L.m_x[i].size();
-			std::cerr << "nnz(M) = " << cnt << std::endl;
+			for (int i = 0; i < ncols; i++) cnt += static_cast<int>(L.m_x[i].size());
+			std::cerr << "nnz(M) = " << cnt << ", ";
+
+			// Compute frobenius norm
+			double fro = 0;
+			for (int i = 0; i < ncols; i++) fro += pow(norm<double>(L.m_x[i], 2), 2);
+			std::cerr << "Frobenius norm: " << fro << std::endl;
 		}
 
 		//std::cerr << "on iteration " << k << std::endl;
@@ -337,14 +359,17 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		// swap necessary rows and columns
 		if (piv_info.size_two) {
+			//static int np2 = 0;
+			//std::cerr << ++np2 << " size two pivots." << std::endl;
+			
 			// figure out list of D[k]'s to compute and update
 			pivoter->flush_col(A1, A1_idx, 0);
 			pivoter->flush_col(Ar, Ar_idx, 1);
 
 			if (piv_info.r != k+1) {
 				pivot(k+1, piv_info.r);
-				std::swap(Ar[k+1], Ar[piv_info.r]);
-				std::swap(A1[k+1], A1[piv_info.r]);
+				pivot_vec(k+1, piv_info.r, A1, A1_idx);
+				pivot_vec(k+1, piv_info.r, Ar, Ar_idx);
 
 				// Swap indices in Ar and A1... this is not necessary in
 				// the other case since A1 was guaranteed to have indices k
@@ -404,7 +429,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			// now i have the two columns.. merge their non-zero patterns
 			el_type Di[2][2];
 			Di[0][0] = A1[k]; 
-			Di[0][1] = Di[1][0] = A1[k+1];
+			Di[0][1] = Di[1][0] = (A1[k+1] + Ar[k]) / 2;
 			Di[1][1] = Ar[k+1];
 
 			D[k] = Di[0][0];
@@ -437,7 +462,6 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			assert(std::abs(A1[k+1] - Ar[k]) < 1e-6);
 #endif
 
-			// we should update on k, k+2, k+4...
 			for (int j : pvt_idx) {
 				if (j <= k+1) continue;
 
@@ -448,8 +472,9 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
 				DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
 
-				if (det == 0) {
+				if (det == 0 || det != det) {
 					std::cerr << "bad det" << std::endl;
+					return;
 				}
 
 				update_schur(-DinvZ[0] / det, j, k);
@@ -496,8 +521,11 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 			// do swaps for pivots if necessary
 			if (piv_info.r != k) {
+				//static int np1 = 0;
+				//std::cerr << ++np1 << " size 1 pivots" << std::endl;
+
 				pivot(k, piv_info.r);
-				std::swap(D[k], D[piv_info.r]);
+				pivot_vec(k, piv_info.r, A1, A1_idx);
 
 #if 0
 				std::cerr << "On iter " << k << " we chose diagonal pivot " << piv_info.r << std::endl;
@@ -516,12 +544,13 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				if (j <= k) continue;
 				//if (std::abs(D[j]) < eps) continue;
 
-				if (D[k] == 0) {
+				if (A1[k] == 0 || A1[k] != A1[k]) {
 					std::cerr << "bad dkk" << std::endl;
+					return;
 				}
 
 				// Compute new schur complement
-				update_schur(-D[j] / D[k], j, k);
+				update_schur(-A1[j] / A1[k], j, k);
 			}
 			
 			advance_list(k);

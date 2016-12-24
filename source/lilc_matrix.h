@@ -321,7 +321,7 @@ public:
 		int last = 0;
 		col_ptr.push_back(last);
 		for (int i = 0; i < m_n_cols; i++) {
-			int col_len = m_idx[i].size();
+			int col_len = static_cast<int>(m_idx[i].size());
 			if (col_len != m_x[i].size()) {
 				return false; // malformed input matrix
 			}
@@ -333,7 +333,7 @@ public:
 			}
 			std::sort(col_vals.begin(), col_vals.end());
 
-			last += col_vals.size();
+			last += static_cast<int>(col_vals.size());
 			col_ptr.push_back(last);
 			
 			for (int j = 0; j < col_vals.size(); j++) {

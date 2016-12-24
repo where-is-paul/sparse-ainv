@@ -291,12 +291,14 @@ class solver {
 					A.sym_equil();
 					
 					equil_name = "Bunch";
+#if ENABLE_MC64
 				} else if (equil_type == equilibration_type::MC64) {
 					vector<el_type> scale = A.sym_mc64(perm);
 					A.sym_equil(scale);	
-					//perm.clear();
+					perm.clear();
 					
 					equil_name = "MC64";
+#endif
 				}
 			
 				dif = clock() - start; total += dif; 
@@ -316,12 +318,12 @@ class solver {
 						A.sym_rcm(perm);
 						perm_name = "RCM";
 						break;
+#if ENABLE_MC64
 					case reordering_type::MC64:
-						if (equil_type != equilibration_type::MC64) {
-							A.sym_mc64(perm);
-						}
+						A.sym_mc64(perm);
 						perm_name = "MC64";
 						break;
+#endif
 				}
 				
 				dif = clock() - start; total += dif;

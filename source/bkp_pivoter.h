@@ -32,9 +32,7 @@ public:
 			el_type el = std::abs(this->A1[j]);
 			if (j == col) {
 				a11 = el;
-			}
-
-			if (el > w1) {
+			} else if (el > w1) {
 				w1 = el;
 			}
 		}
@@ -66,10 +64,11 @@ public:
 #endif
 
 		// regularization
-		double bound = 64 * this->m_eps * this->m_reg;
+		double bound = this->m_eps * this->m_reg;
 		//std::cerr << bound << " " << a11 << " " << w1 << std::endl;
 		if (std::max(a11, w1) <= bound) {
 			//std::cerr << "whatta shame we had to do this" << std::endl;
+			// TODO: Change this to "bound"
 			this->A1[col] = bound;
 			return pivot_struct(false, col);
 		} else if (a11 > m_alpha * m_beta * w1 + this->m_eps) {
@@ -78,7 +77,12 @@ public:
 			double wr = 0, arr = 0;
 			for (int j : this->A1_idx) {
 				if (j < col) {
+					//TODO: Remove this
 					std::cerr << "this should be removed" << std::endl;
+					continue;
+				}
+
+				if (j == col) {
 					continue;
 				}
 				el_type el = std::abs(this->A1[j]);
@@ -106,6 +110,14 @@ public:
 				this->A1_idx.swap(this->Ar_idx);
 				return pivot_struct(false, r);
 			} else {
+				// TODO: IS THIS NEEDED?
+				if (find(A1_idx.begin(), A1_idx.end(), r) == A1_idx.end()) {
+					A1_idx.push_back(r);
+					A1[r] = 0;
+				}
+#if 0
+				assert(std::abs(A1[r] - Ar[col]) < 1e-3);
+#endif
 				return pivot_struct(true, r);
 			}
 		}
