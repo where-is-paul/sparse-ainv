@@ -38,7 +38,7 @@ public:
 	}
 
 	void flush_col(vector<el_type>& v, vector<int>& idx, int col = 0) {
-#if 1
+#if 0
 		// assert cleanliness
 		set<int> s(A1_idx.begin(), A1_idx.end());
 		for (int i = 0; i < A1.size(); i++) {
@@ -88,7 +88,7 @@ protected:
 		for (int j : idx) v[j] = 0;
 		idx.clear();
 
-#if 1
+#if 0
 		// assert cleanliness
 		for (int i = 0; i < v.size(); i++) {
 			assert(v[i] == 0);

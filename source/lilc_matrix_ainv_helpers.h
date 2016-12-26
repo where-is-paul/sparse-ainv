@@ -101,45 +101,33 @@ struct by_tolerance {
 };
 }
 
+const double droptol_max = 0.5;
 /*! \brief Performs the dual-dropping criteria outlined in Li & Saad (2005).
 	\param v the vector that whose elements will be selectively dropped.
 	\param curr_nnzs the non-zeros in the vector v.
 	\param tol a parameter to control agressiveness of dropping. Elements less than tol*norm(v) are dropped.
 */
 template <class el_type>
-inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double& tol, int keep) { 
+inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double& tol, int keep, bool absolute = false) { 
 	static vector<el_type> work;
 	static vector<int> nnzs;
 
 	//determine dropping tolerance. all elements with value less than tolerance = tol * norm(v) is dropped.
-	el_type tolerance = std::min(5e-1, tol * norm<el_type>(vals));
+	double mult = 1.0;
+	if (!absolute) {
+		mult = norm<el_type>(vals);
+	}
+	el_type tolerance = std::min(droptol_max, tol * mult);
 
 	work.clear();
 	nnzs.clear();
 	for (int i = 0; i < curr_nnzs.size(); i++) {
-		if (curr_nnzs[i] != keep && std::abs(vals[i]) < tolerance) continue;
+		if (curr_nnzs[i] != keep && std::abs(vals[i]) <= tolerance) continue;
 		work.push_back(vals[i]);
 		nnzs.push_back(curr_nnzs[i]);
 	}
 
 	vals.swap(work);
-	curr_nnzs.swap(nnzs);
-}
-
-// Applies dropping rule to dense vals vector
-template <class el_type>
-inline void drop_tol_dense(vector<el_type>& vals, vector<int>& curr_nnzs, const double& tol, int keep) { 
-	static vector<int> nnzs;
-
-	//determine dropping tolerance. all elements with value less than tolerance = tol * norm(v) is dropped.
-	el_type tolerance = tol * norm<el_type>(vals, curr_nnzs, 1);
-
-	nnzs.clear();
-	for (int i = 0; i < curr_nnzs.size(); i++) {
-		if (curr_nnzs[i] != keep && std::abs(vals[i]) < tolerance) continue;
-		nnzs.push_back(curr_nnzs[i]);
-	}
-
 	curr_nnzs.swap(nnzs);
 }
 

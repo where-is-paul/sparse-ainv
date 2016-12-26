@@ -211,10 +211,6 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		sparse_vec_add(1.0, lj, coef, lk, work, curr_nnzs);
 
-		// Apply dropping rules to schur complement
-		// Should I apply dropping rules after applying both columns???
-		drop_tol(work, curr_nnzs, 0.1 * par.tol, j);
-
 		for (auto x : work) {
 			if (x != x) {
 				//std::cerr << "wait wtffff bad computed valuees" << std::endl;
@@ -257,17 +253,54 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		q.insert(j);
 	};
 
+	auto apply_dropping_rules = [&](const vector<int>& pvts, int k) {
+		// Figure out droptol
+		double min_M_colsum = std::numeric_limits<double>::max();
+		for (int i : pvts) {
+			if (i <= k) continue;
+			min_M_colsum = std::min(min_M_colsum, pow(norm<el_type>(L.m_x[i], 2.0), 2.0));
+		}
+
+		for (int i : pvts) {
+			// Apply dropping rules to schur complement
+			if (i <= k) continue;
+
+			for (int j : L.m_idx[i]) {
+				seen1[j] = true;
+			}
+			curr_nnzs = L.m_idx[i];
+			drop_tol(L.m_x[i], L.m_idx[i], 0.1 * par.tol * min_M_colsum, i, true);
+			
+			for (int j : L.m_idx[i]) {
+				seen1[j] = false;
+			}
+			for (int j : curr_nnzs) {
+				if (seen1[j]) {
+					seen1[j] = false;
+					L.m_list[j].erase(i);
+				}
+			}
+			curr_nnzs.clear();
+
+			// Fix ordering
+			q.erase(i);
+			num_nz[i] = static_cast<int>(L.m_x[i].size());
+			q.insert(i);
+		}
+	};
+
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
 		//std::vector<int> rest(q.begin(), q.end());
 		int nk = *q.begin();
-		if (num_nz[nk] < num_nz[k]/2) {
+		if (num_nz[nk] < 0.5 * num_nz[k]) {
 			pivot(k, nk);
 		}
 
 		static std::map<int, bool> done;
-		int pcnt = (100*k)/ncols;
+		int pcnt = (100*(k+1))/ncols;
 		if (pcnt%10 == 0 && !done[pcnt]) {
+			std::cerr << k << std::endl;
 			done[pcnt] = 1;
 			std::cerr << pcnt << " percent complete. ";
 			int cnt = 0;
@@ -276,8 +309,8 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 			// Compute frobenius norm
 			double fro = 0;
-			for (int i = 0; i < ncols; i++) fro += pow(norm<double>(L.m_x[i], 2), 2);
-			std::cerr << "Frobenius norm: " << fro << std::endl;
+			for (int i = 0; i < ncols; i++) fro += pow(norm<el_type>(L.m_x[i], 2), 2);
+			std::cerr << "Frobenius norm: " << sqrt(fro) << std::endl;
 		}
 
 		//std::cerr << "on iteration " << k << std::endl;
@@ -502,6 +535,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		std::cerr << "sanity check: " << sane << endl;
 #endif
 			}
+			apply_dropping_rules(pvt_idx, k+1);
 
 			// Extra iter accounted for
 			advance_list(k);
@@ -510,9 +544,6 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		} else {
 			// figure out list of D[k]'s to compute and update
 			pivoter->flush_col(A1, A1_idx, 0);
-
-			// TODO: Apply dropping rules to pivot col
-			//drop_tol_dense(A1, A1_idx, par.tol, piv_info.r);
 
 			for (int j : A1_idx) {
 				if (j < k) continue;
@@ -552,6 +583,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				// Compute new schur complement
 				update_schur(-A1[j] / A1[k], j, k);
 			}
+			apply_dropping_rules(A1_idx, k);
 			
 			advance_list(k);
 		}

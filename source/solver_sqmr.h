@@ -17,9 +17,21 @@ void solver<el_type, mat_type> :: sqmr(int max_iter, double stop_tol) {
 	// temporary vectors for calcluations
 	vector<el_type> x(n), q(n), t(n), r(n), tmp(n);
 	
-	// residual = b - A*x0
-	r = rhs;
+	// Our preconditioner M = LDL'.
+	auto Minv = [&](vector<el_type>& in, vector<el_type>& out) { 
+		L.multiply(in, out, true);
+		D.solve(out, tmp);
+		L.multiply(tmp, out, false);
+	};
+
+	// set up initial guess as M^(-1) * b
+	Minv(rhs, x);
 	
+	// residual = b - A*x0
+	sol_vec = x;
+	A.multiply(x, tmp);
+	vector_sum(1.0, rhs, -1.0, tmp, r);
+
 	// search direction
 	vector<el_type> d(n);
 	
@@ -27,15 +39,8 @@ void solver<el_type, mat_type> :: sqmr(int max_iter, double stop_tol) {
 	double eps = A.eps;
 	double norm_rhs = norm(rhs, 2.0);
 
-	double res = norm_rhs;
+	double res = norm(r, 2.0);
 	double resmin = res;
-	
-	// Our preconditioner M = LDL'.
-	auto Minv = [&](vector<el_type>& in, vector<el_type>& out) { 
-		L.multiply(in, out, true);
-		D.solve(out, tmp);
-		L.multiply(tmp, out, false);
-	};
 	
 	// compute t = M^(-1) * r
 	Minv(r, t);
