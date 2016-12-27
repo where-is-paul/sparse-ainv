@@ -66,9 +66,10 @@ public:
 		
 			ga = norm(this->A1, this->A1_idx, 2.0) / std::max(std::abs(a11), bound);
 			gb = norm(this->Ar, this->Ar_idx, 2.0) / std::max(std::abs(arr), bound);
-			seen0.add_set(this->A1_idx);
-			seen0.add_set(this->Ar_idx);
-			
+			this->seen0.add_set(this->A1_idx);
+			this->seen0.add_set(this->Ar_idx);
+			this->seen0.flush(this->pvt_idx);
+
 			el_type d00, d11, d10;
 			d00 = this->A1[col];
 			d11 = this->Ar[r];
@@ -77,7 +78,7 @@ public:
 			// [d11  -d10
 			//  -d10  d00] / det
 			
-			for (int i : pvt_idx) {
+			for (int i : this->pvt_idx) {
 				double x0 = ( this->A1[i] * d11 - this->Ar[i] * d10) / det,
 					   x1 = (-this->A1[i] * d10 + this->Ar[i] * d00) / det;
 				gc += x0 * x0 + x1 * x1;
