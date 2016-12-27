@@ -38,22 +38,6 @@ public:
 	}
 
 	void flush_col(vector<el_type>& v, vector<int>& idx, int col = 0) {
-#if 0
-		// assert cleanliness
-		set<int> s(A1_idx.begin(), A1_idx.end());
-		for (int i = 0; i < A1.size(); i++) {
-			if (s.count(i)) continue;
-			assert(A1[i] == 0);
-		}
-		set<int> q(Ar_idx.begin(), Ar_idx.end());
-		for (int i = 0; i < Ar.size(); i++) {
-			if (q.count(i)) continue;
-			assert(Ar[i] == 0);
-		}
-#endif
-
-		sort(A1_idx.begin(), A1_idx.end());
-		sort(Ar_idx.begin(), Ar_idx.end());
 		if (col == 0) {
 			v.swap(A1);
 			idx.swap(A1_idx);
@@ -133,17 +117,10 @@ protected:
 	void clean(vector<el_type>& v, vector<int>& idx) {
 		for (int j : idx) v[j] = 0;
 		idx.clear();
-
-#if 0
-		// assert cleanliness
-		for (int i = 0; i < v.size(); i++) {
-			assert(v[i] == 0);
-		}
-#endif
 	}
 
 	vector<el_type> A1, Ar;
-	vector<int> A1_idx, Ar_idx;
+	vector<int> A1_idx, Ar_idx, pvt_idx;
 	lilc_matrix<el_type> *A, *L;
 	const vector<int> *p, *pinv;
 

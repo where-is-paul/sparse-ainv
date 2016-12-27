@@ -163,7 +163,7 @@ class solver {
 		*/
 		solver() {
 			msg_lvl = message_level::STATISTICS;
-            piv_type = pivot_type::ROOK;
+            piv_type = pivot_type::WMN;
 			reorder_type = reordering_type::AMD;
 			equil_type = equilibration_type::BUNCH;
 			solve_type = solver_type::SQMR;
@@ -264,6 +264,10 @@ class solver {
                 piv_type = pivot_type::ROOK;
             } else if (strcmp(pivot, "bunch") == 0) {
                 piv_type = pivot_type::BKP;
+            } else if (strcmp(pivot, "wmn") == 0) {
+                piv_type = pivot_type::WMN;
+            } else if (strcmp(pivot, "none") == 0) {
+                piv_type = pivot_type::NONE;
             }
 		}
 
@@ -354,6 +358,10 @@ class solver {
                 pivot_name = "BK";
             } else if (piv_type == pivot_type::ROOK) {
                 pivot_name = "Rook";
+            } else if (piv_type == pivot_type::WMN) {
+                pivot_name = "Weighted minimum norm";
+            } else if (piv_type == pivot_type::NONE) {
+                pivot_name = "No pivoting";
             }
             
 			if (msg_lvl) printf("  Factorization (%s pivoting):\t%.3f seconds.\n", pivot_name.c_str(), dif/CLOCKS_PER_SEC);

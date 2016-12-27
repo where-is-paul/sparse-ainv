@@ -15,15 +15,12 @@ public:
 	pivot_struct find_pivot(int col) { 
 		this->update_col(this->A1, this->A1_idx, col);
 
-		/*
-		// TODO: Change this back
 		// regularization
-		double bound = 64 * this->m_eps * this->m_reg;
+		double bound = this->m_eps * this->m_reg;
 		if (this->A1[col] <= bound) {
-			this->A1[col] = bound;
+			this->A1[col] = (this->A1[col] >= 0 ? 1 : -1) * bound;
 			return pivot_struct(false, col);
 		}
-		*/
 
 		return pivot_struct(false, col);
 	}

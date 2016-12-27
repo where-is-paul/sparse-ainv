@@ -53,7 +53,9 @@ public:
 	struct pivot_type {
 		enum {
 			BKP, 
-			ROOK
+			ROOK,
+			WMN,
+			NONE
 		};
 	};
 
