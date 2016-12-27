@@ -173,11 +173,11 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		count += static_cast<int>(L.m_x[k].size());
 	};
 
-	auto update_schur = [&](double coef, int j, int k) {
+	auto update_schur = [&](el_type coef, int j, int k) {
 		col_wrapper<el_type> lk(L.m_x[k].data(), L.m_idx[k].data(), L.m_x[k].size()),
 							 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
 
-		sparse_vec_add(1.0, lj, coef, lk, work, curr_nnzs);
+		sparse_vec_add(el_type(1.0), lj, coef, lk, work, curr_nnzs);
 
 		// Add existing nnz into set
 		for (int i : L.m_idx[j]) {
@@ -351,7 +351,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			}
 
 			for (int j : A1_idx) {
-				if (j < k) continue;
+				if (j < k) {
+					std::cerr << "wrongggg" << std::endl;
+					continue;
+				}
 				D[j] = A1[j];
 			}
 

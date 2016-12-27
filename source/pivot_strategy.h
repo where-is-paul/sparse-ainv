@@ -86,7 +86,7 @@ protected:
 			el_type ci = L->m_x[k][i];
 			seen0.add_set(A->m_idx[pi]);
 			for (int j = 0; j < A->m_idx[pi].size(); j++) {
-				int r = A->m_idx[pi][j];//(*pinv)[A->m_idx[pi][j]];
+				int r = A->m_idx[pi][j];
 				work[r] += ci * A->m_x[pi][j];
 			}
 		}

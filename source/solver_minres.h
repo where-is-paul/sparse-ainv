@@ -25,7 +25,8 @@ void solver<el_type, mat_type> :: minres(int max_iter, double stop_tol, double s
 	
 	// temporary variables to store the corner of the matrix we're factoring
 	double gamma_min = 1e99;
-	el_type delta1[2], delta2[2], ep[2], gamma1[2], gamma2[2];
+	el_type delta1[2], delta2[2], ep[2], gamma1[2];
+	double gamma2[2];
 	delta1[1] = 0;
 	
 	// temporary vectors for lanczos calcluations

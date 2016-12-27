@@ -345,7 +345,7 @@ class solver {
 			}
 
 			start = clock();
-			lilc_matrix<double>::params ainv_par;
+			lilc_matrix<el_type>::params ainv_par;
 			ainv_par.tol = par.ainv_tol;
 			ainv_par.beta = par.ainv_beta;
 			ainv_par.piv_type = piv_type;

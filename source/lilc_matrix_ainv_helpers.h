@@ -45,7 +45,7 @@ inline void vector_sum(double a, vector<el_type>& v, double b, vector<el_type>& 
 	\return the norm of v.
 */
 template <class el_type>
-inline double norm(const vector<el_type>& v, const vector<int>& curr_nnzs, el_type p = 1) { 
+inline double norm(const vector<el_type>& v, const vector<int>& curr_nnzs, double p = 1) { 
 	el_type res = 0;
 	for (int j : curr_nnzs) {
 		res += pow(abs(v[j]), p);  
@@ -60,7 +60,7 @@ inline double norm(const vector<el_type>& v, const vector<int>& curr_nnzs, el_ty
 	\return the norm of v.
 */
 template <class el_type>
-inline double norm(const vector<el_type>& v, el_type p = 1) { 
+inline double norm(const vector<el_type>& v, double p = 1) { 
 	el_type res = 0;
 	for (int i = 0; i < v.size(); i++) {
 		res += pow(abs(v[i]), p);
