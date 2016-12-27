@@ -174,8 +174,8 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		std::cerr << "------------------------------- " << std::endl;
 #endif
 
-		num_nz[k] = static_cast<int>(L.m_idx[r].size());
-		num_nz[r] = static_cast<int>(L.m_idx[k].size());
+		num_nz[k] = static_cast<int>(L.m_idx[k].size());
+		num_nz[r] = static_cast<int>(L.m_idx[r].size());
 		
 		q.insert(k);
 		q.insert(r);
