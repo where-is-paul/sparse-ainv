@@ -292,10 +292,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
 		//std::vector<int> rest(q.begin(), q.end());
-		//int nk = *q.begin();
-		//if (num_nz[nk] < 0.5 * num_nz[k]) {
-		//	pivot(k, nk);
-		//}
+		int nk = *q.begin();
+		if (num_nz[nk] < 0.5 * num_nz[k]) {
+			pivot(k, nk);
+		}
 
 		static std::map<int, bool> done;
 		int pcnt = (100*(k+1))/ncols;
