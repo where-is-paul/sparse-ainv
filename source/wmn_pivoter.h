@@ -64,6 +64,7 @@ public:
 				}
 			}
 		
+			double nl1 = norm(this->L->m_x[col], 2.0), nlr = norm(this->L->m_x[r], 2.0);
 			ga = norm(this->A1, this->A1_idx, 2.0) / std::max(std::abs(a11), bound);
 			gb = norm(this->Ar, this->Ar_idx, 2.0) / std::max(std::abs(arr), bound);
 			this->seen0.add_set(this->A1_idx);
@@ -84,16 +85,17 @@ public:
 				gc += x0 * x0 + x1 * x1;
 			}
 			gc = sqrt(gc);
+			double nl1r = sqrt(nl1 * nl1 + nlr * nlr);
 
-			double eta = 0.1, gamma = 0.01;
-			if (eta * ga < gc && gamma * ga < gb) {
-				return pivot_struct(false, col);
-			} else if (gc < eta * ga) {
-				return pivot_struct(true, r);
-			} else {
+			double eta = 0.01, gamma = 0.1;
+			if (gb < eta * std::min(gamma * ga, gc) || nlr * gb < eta * std::min(gamma * nl1 * ga, nl1r * gc)) {
 				this->A1.swap(this->Ar);
 				this->A1_idx.swap(this->Ar_idx);
 				return pivot_struct(false, r);
+			} else if (gc < gamma * ga || nl1r * gc < gamma * nl1 * ga) {
+				return pivot_struct(true, r);
+			} else {
+				return pivot_struct(false, col);
 			}
 		}
 	}

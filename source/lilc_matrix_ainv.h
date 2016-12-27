@@ -167,7 +167,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		// drop elements of col k
 		q.erase(k);
-		drop_tol(L.m_x[k], L.m_idx[k], par.tol, k);
+		drop_tol(L.m_x[k], L.m_idx[k], par.tol, k, true);
 		
 		// increase non-zero count of L
 		count += static_cast<int>(L.m_x[k].size());
@@ -224,7 +224,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				seen1[j] = true;
 			}
 			curr_nnzs = L.m_idx[i];
-			drop_tol(L.m_x[i], L.m_idx[i], 0.1 * par.tol * min_M_colsum, i, true);
+			drop_tol(L.m_x[i], L.m_idx[i], /*0.1 * par.tol * min_M_colsum*/ par.tol / 4, i, true);
 			
 			for (int j : L.m_idx[i]) {
 				seen1[j] = false;
@@ -247,11 +247,12 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
 		int nk = *q.begin();
-		if (num_nz[nk] < 0.5 * num_nz[k]) {
+		if (num_nz[nk] < num_nz[k]) {
 			pivot(k, nk);
 		}
 
 		static std::map<int, bool> done;
+		static int np0 = 0, np1 = 0, np2 = 0;
 		int pcnt = (100*(k+1))/ncols;
 		if (pcnt%10 == 0 && !done[pcnt]) {
 			done[pcnt] = 1;
@@ -263,7 +264,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			// Compute frobenius norm
 			double fro = 0;
 			for (int i = 0; i < ncols; i++) fro += pow(norm<el_type>(L.m_x[i], 2), 2);
-			std::cerr << "Frobenius norm: " << sqrt(fro) << std::endl;
+			std::cerr << "Frobenius norm: " << sqrt(fro) << ". Pivots: [" << np0 << " " << np1 << " " << np2 << "]. " << std::endl;
 		}
 
 		// need to pivot on ((A*M(:,p(dd)))'*M(:,p(dd:end)))';
@@ -282,6 +283,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				pivot_vec(k+1, piv_info.r, A1, A1_idx);
 				pivot_vec(k+1, piv_info.r, Ar, Ar_idx);
 			}
+			np2++;
 
 			// merge non-zero indices, compute accumlation depending on even or odd
 			seen0.add_set(A1_idx);
@@ -330,8 +332,11 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 			// do swaps for pivots if necessary
 			if (piv_info.r != k) {
+				np1++;
 				pivot(k, piv_info.r);
 				pivot_vec(k, piv_info.r, A1, A1_idx);
+			} else {
+				np0++;
 			}
 
 			for (int j : A1_idx) {
