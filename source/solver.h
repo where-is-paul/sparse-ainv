@@ -139,8 +139,6 @@ bool read_vector(std::vector<el_type>& vec, std::string filename, int msg_lvl = 
 template<class el_type, class mat_type = lilc_matrix<el_type> >
 class solver {
 	public:
-        typedef typename mat_type::pivot_type pivot_type;
-        
 		mat_type A;	///<The matrix to be factored.
 		mat_type L;	///<The lower triangular factor of A.
 		
@@ -297,7 +295,7 @@ class solver {
 					equil_name = "Bunch";
 #if ENABLE_MC64
 				} else if (equil_type == equilibration_type::MC64) {
-					vector<el_type> scale = A.sym_mc64(perm);
+					vector<double> scale = A.sym_mc64(perm);
 					A.sym_equil(scale);	
 					perm.clear();
 					
@@ -345,7 +343,7 @@ class solver {
 			}
 
 			start = clock();
-			lilc_matrix<el_type>::params ainv_par;
+			params ainv_par;
 			ainv_par.tol = par.ainv_tol;
 			ainv_par.beta = par.ainv_beta;
 			ainv_par.piv_type = piv_type;

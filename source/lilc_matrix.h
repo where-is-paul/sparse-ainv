@@ -24,6 +24,24 @@
 using std::vector;
 using std::set;
 
+//-------------- types of pivoting procedures ----------------//
+/*! A simple enum class for listing the type of pivoting procedure SYM-ILDL uses.
+*/
+struct pivot_type {
+	enum {
+		BKP, 
+		ROOK,
+		WMN,
+		NONE
+	};
+};
+
+struct params {
+	double tol;
+	double beta;
+	int piv_type;
+};
+
 template<class el_type = double> 
 class lilc_matrix {
 public:
@@ -46,24 +64,6 @@ public:
 	vector<set<int>> m_list;
     
 	block_diag_matrix<el_type> S; ///<A diagonal scaling matrix S such that SAS will be equilibriated in the max-norm (i.e. every row/column has norm 1). S is constructed after running the sym_equil() function, after which SAS will be stored in place of A.
-    
-    //-------------- types of pivoting procedures ----------------//
-    /*! A simple enum class for listing the type of pivoting procedure SYM-ILDL uses.
-    */
-	struct pivot_type {
-		enum {
-			BKP, 
-			ROOK,
-			WMN,
-			NONE
-		};
-	};
-
-	struct params {
-		double tol;
-		double beta;
-		int piv_type;
-	};
 	
 public:
 	
@@ -206,7 +206,7 @@ public:
 	/*!	\brief The symmetric matrix A is equilibrated by the input S and the symmetric equilibrated matrix SAS is stored in A.
 		\param The diagonal of the scaling matrix S.
 	*/
-	void sym_equil(const elt_vector_type& S);
+	void sym_equil(const vector<double>& S);
 	
 	//----Factorizations----//
 	/*! \brief Performs an LDL' factorization of this matrix. 

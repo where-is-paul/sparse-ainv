@@ -50,7 +50,7 @@ void lilc_matrix<el_type> :: sym_equil() {
 }
 
 template<class el_type>
-void lilc_matrix<el_type> :: sym_equil(const elt_vector_type& s) {
+void lilc_matrix<el_type> :: sym_equil(const vector<double>& s) {
 
 	//find termination points for loops with binary search later.
 	int i, ncols = n_cols();
