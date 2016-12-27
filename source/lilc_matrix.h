@@ -315,7 +315,7 @@ public:
 		\param row_ind The row indices of each value.
 		\param col_ptr The length of each column in row_ind.
 	*/
-	bool to_csc(elt_vector_type& val, idx_vector_type& row_ind, idx_vector_type& col_ptr) {
+	bool to_csc(vector<double>& val, vector<int>& row_ind, vector<int>& col_ptr) {
 		val.clear();
 		row_ind.clear();
 		col_ptr.clear();
