@@ -213,7 +213,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		double min_M_colsum = std::numeric_limits<double>::max();
 		for (int i : pvts) {
 			if (i <= k) continue;
-			min_M_colsum = std::min(min_M_colsum, pow(norm<el_type>(L.m_x[i], 2.0), 2.0));
+			min_M_colsum = std::min(min_M_colsum, pow(norm(L.m_x[i], 2.0), 2.0));
 		}
 
 		for (int i : pvts) {
@@ -246,9 +246,20 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
-		int nk = *q.begin();
-		if (num_nz[nk] < num_nz[k]) {
-			pivot(k, nk);
+		int nscr = int(0.5 + log10(num_nz[*(--q.end())]));
+		
+		int best = *q.begin();
+		double bnorm = 0;
+		auto it = q.begin();
+		while (it != q.end() && nscr--) {
+			double cnorm = norm(L.m_x[*it], 10.0); // approx of max norm, replace later
+			if (cnorm > bnorm) {
+				bnorm = cnorm;
+				best = *it;
+			}
+		}
+		if (num_nz[best] < num_nz[k]) {
+			pivot(k, best);
 		}
 
 		static std::map<int, bool> done;
@@ -263,7 +274,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 			// Compute frobenius norm
 			double fro = 0;
-			for (int i = 0; i < ncols; i++) fro += pow(norm<el_type>(L.m_x[i], 2), 2);
+			for (int i = 0; i < ncols; i++) fro += pow(norm(L.m_x[i], 2.0), 2.0);
 			std::cerr << "Frobenius norm: " << sqrt(fro) << ". Pivots: [" << np0 << " " << np1 << " " << np2 << "]. " << std::endl;
 		}
 
@@ -300,13 +311,13 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			D.off_diagonal(k) = Di[0][1];
 			D[k+1] = Di[1][1];
 
+			// Z(:, [j0, j1]) -= Z(:, [k, k+1]) * [a b; c d]
+			//[a * zk + c * z_k+1, b * zk + d * zk+1]
+			el_type DinvZ[2];
+			el_type det = Di[0][0] * Di[1][1] - Di[0][1] * Di[1][0];
 			for (int j : pvt_idx) {
 				if (j <= k+1) continue;
 
-				// Z(:, [j0, j1]) -= Z(:, [k, k+1]) * [a b; c d]
-				//[a * zk + c * z_k+1, b * zk + d * zk+1]
-				el_type DinvZ[2];
-				el_type det = Di[0][0] * Di[1][1] - Di[0][1] * Di[1][0];
 				DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
 				DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
 

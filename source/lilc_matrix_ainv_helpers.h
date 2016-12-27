@@ -115,7 +115,7 @@ inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double
 	//determine dropping tolerance. all elements with value less than tolerance = tol * norm(v) is dropped.
 	double mult = 1.0;
 	if (!absolute) {
-		mult = norm<el_type>(vals);
+		mult = norm(vals);
 	}
 	double deps = std::numeric_limits<double>::epsilon();
 	el_type tolerance = std::max(deps, std::min(droptol_max, tol * mult));
