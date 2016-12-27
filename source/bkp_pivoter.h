@@ -29,11 +29,11 @@ public:
 				std::cerr << "this should be removed" << std::endl;
 				continue;
 			}
-			el_type el = std::abs(this->A1[j]);
+			el_type el = this->A1[j];
 			if (j == col) {
 				a11 = el;
-			} else if (el > w1) {
-				w1 = el;
+			} else if (std::abs(el) > w1) {
+				w1 = std::abs(el);
 			}
 		}
 
@@ -66,12 +66,13 @@ public:
 		// regularization
 		double bound = this->m_eps * this->m_reg;
 		//std::cerr << bound << " " << a11 << " " << w1 << std::endl;
-		if (std::max(a11, w1) <= bound) {
+		if (std::max(std::abs(a11), w1) <= bound) {
 			//std::cerr << "whatta shame we had to do this" << std::endl;
 			// TODO: Change this to "bound"
-			this->A1[col] = bound;
+			//std::cerr << "Small pivot " << this->A1[col] << " replaced by " << ((a11 >= 0 ? 1 : -1) * bound) << std::endl;
+			this->A1[col] = (a11 >= 0 ? 1 : -1) * bound;
 			return pivot_struct(false, col);
-		} else if (a11 > m_alpha * m_beta * w1 + this->m_eps) {
+		} else if (std::abs(a11) > m_alpha * m_beta * w1 + this->m_eps) {
 			return pivot_struct(false, col);
 		} else {
 			double wr = 0, arr = 0;
@@ -103,18 +104,19 @@ public:
 				}
 			}
 		
-			if (a11 * wr > m_alpha * pow(m_beta * w1, 2.0) + this->m_eps) {
+			if (std::abs(a11) * wr > m_alpha * pow(m_beta * w1, 2.0) + this->m_eps) {
 				return pivot_struct(false, col);
 			} else if (arr > m_alpha * m_beta * wr + this->m_eps) {
 				this->A1.swap(this->Ar);
 				this->A1_idx.swap(this->Ar_idx);
 				return pivot_struct(false, r);
 			} else {
+				/*
 				// TODO: IS THIS NEEDED?
 				if (std::find(this->A1_idx.begin(), this->A1_idx.end(), r) == this->A1_idx.end()) {
 					this->A1_idx.push_back(r);
 					this->A1[r] = 0;
-				}
+				}*/
 #if 0
 				assert(std::abs(A1[r] - Ar[col]) < 1e-3);
 #endif

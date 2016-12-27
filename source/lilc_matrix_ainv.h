@@ -292,10 +292,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
 		//std::vector<int> rest(q.begin(), q.end());
-		int nk = *q.begin();
-		if (num_nz[nk] < 0.5 * num_nz[k]) {
-			pivot(k, nk);
-		}
+		//int nk = *q.begin();
+		//if (num_nz[nk] < 0.5 * num_nz[k]) {
+		//	pivot(k, nk);
+		//}
 
 		static std::map<int, bool> done;
 		int pcnt = (100*(k+1))/ncols;
@@ -400,6 +400,8 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			pivoter->flush_col(Ar, Ar_idx, 1);
 
 			if (piv_info.r != k+1) {
+				//static int np2 = 0;
+				//std::cerr << ++np2 << " 2x2 pivots so far. " << std::endl;
 				pivot(k+1, piv_info.r);
 				pivot_vec(k+1, piv_info.r, A1, A1_idx);
 				pivot_vec(k+1, piv_info.r, Ar, Ar_idx);
@@ -545,15 +547,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			// figure out list of D[k]'s to compute and update
 			pivoter->flush_col(A1, A1_idx, 0);
 
-			for (int j : A1_idx) {
-				if (j < k) continue;
-				D[j] = A1[j];
-			}
-
 			// do swaps for pivots if necessary
 			if (piv_info.r != k) {
 				//static int np1 = 0;
-				//std::cerr << ++np1 << " size 1 pivots" << std::endl;
+				//std::cerr << ++np1 << " 1x1 pivots so far." << std::endl;
 
 				pivot(k, piv_info.r);
 				pivot_vec(k, piv_info.r, A1, A1_idx);
@@ -570,6 +567,11 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			}
 			std::cerr << endl;
 #endif
+
+			for (int j : A1_idx) {
+				if (j < k) continue;
+				D[j] = A1[j];
+			}
 
 			for (int j : A1_idx) {
 				if (j <= k) continue;

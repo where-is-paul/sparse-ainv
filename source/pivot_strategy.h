@@ -68,6 +68,8 @@ public:
 protected:
 	void update_col(vector<el_type>& v, vector<int>& idx, int k) {
 		clean(v, idx);
+
+#ifdef AINV_MODE
 		int pk = (*p)[k];
 		for (int j : A->m_idx[pk]) {
 			j = (*pinv)[j];
@@ -82,6 +84,50 @@ protected:
 								 lj(L->m_x[j].data(), L->m_idx[j].data(), L->m_x[j].size());
 			v[j] = sparse_dot_prod(ak, lj, pinv);
 		}
+#else
+		// Compute a sparse-sparse matrix vector product
+		static vector<el_type> Az_x, work;
+		static vector<int> Az_idx;
+		if (work.empty()) {
+			work.resize(A->n_cols());
+		}
+
+		Az_x.clear();
+		Az_idx.clear();
+
+		// Want A * z_i --> sum z_ij Aj 
+		// need accumulation vector, and non-zero merger
+		for (int i = 0; i < L->m_idx[k].size(); i++) {
+			int pi = (*p)[L->m_idx[k][i]];
+			el_type ci = L->m_x[k][i];
+			seen0.add_set(A->m_idx[pi]);
+			for (int j = 0; j < A->m_idx[pi].size(); j++) {
+				int r = A->m_idx[pi][j];//(*pinv)[A->m_idx[pi][j]];
+				work[r] += ci * A->m_x[pi][j];
+			}
+		}
+		seen0.flush(Az_idx);
+
+		for (int i : Az_idx) {
+			Az_x.push_back(work[i]);
+			work[i] = 0;
+		}
+
+		for (int j : Az_idx) {
+			j = (*pinv)[j];
+			seen0.add_set(L->m_list[j]);
+		}
+		v[k] = 0;
+		seen0.add_single(k);
+		seen0.flush(idx);
+
+		for (int j : idx) {
+			col_wrapper<el_type> ak(Az_x.data(), Az_idx.data(), Az_x.size()),
+								 lj(L->m_x[j].data(), L->m_idx[j].data(), L->m_x[j].size());
+			v[j] = sparse_dot_prod(ak, lj, pinv);
+		}
+#endif
+
 	}
 
 	void clean(vector<el_type>& v, vector<int>& idx) {

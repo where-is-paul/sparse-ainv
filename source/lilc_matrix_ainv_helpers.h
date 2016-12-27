@@ -117,7 +117,8 @@ inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double
 	if (!absolute) {
 		mult = norm<el_type>(vals);
 	}
-	el_type tolerance = std::min(droptol_max, tol * mult);
+	double deps = std::numeric_limits<double>::epsilon();
+	el_type tolerance = std::max(deps, std::min(droptol_max, tol * mult));
 
 	work.clear();
 	nnzs.clear();
