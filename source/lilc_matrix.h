@@ -180,7 +180,7 @@ public:
 		A detailed description of this function as well as all its subfunctions can be found in "An Approximate Minimum Dgree Algorithm" by Davis, Amestoy, and Duff (1981).
 		\param perm An empty permutation vector (filled on function completion).
 	*/
-	inline void sym_amd(vector<int>& perm);
+	void sym_amd(vector<int>& perm);
 	
 	/*! \brief Returns MC64 ordering of the matrix A (stored in perm), and an optional scaling. 
 		
@@ -190,7 +190,7 @@ public:
 		
 		NOTE: Currently supports doubles only.
 	*/
-	inline std::vector<double> sym_mc64(vector<int>& perm);
+	std::vector<double> sym_mc64(vector<int>& perm);
 
 	/*! \brief Given a permutation vector perm, A is permuted to P'AP, where P is the permutation matrix associated with perm. 
 		\param perm the permutation vector.

@@ -68,7 +68,8 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	sparse_ainv::solver<long double> solv;
+	typedef long double precision_type;
+	sparse_ainv::solver<precision_type> solv;
 
 	//default is statistics output
 	solv.set_message_level("statistics");
@@ -90,7 +91,7 @@ int main(int argc, char* argv[])
 			FLAGS_max_iters = 200;
 		}
 
-		vector<long double> rhs;
+		vector<precision_type> rhs;
 		if (!FLAGS_rhs_file.empty()) {
 			sparse_ainv::read_vector(rhs, FLAGS_rhs_file);
 		} else {
