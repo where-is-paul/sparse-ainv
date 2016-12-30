@@ -40,14 +40,14 @@ public:
 		}
 
 		// regularization
-		double bound = this->m_eps * this->m_reg;
-		if (std::max(std::abs(a11), w1) <= bound) {
-			this->A1[col] = (a11 >= 0 ? 1 : -1) * bound;
+		if (std::max(std::abs(a11), w1) <= this->m_bound) {
+			this->A1[col] = (a11 >= 0 ? 1 : -1) * this->m_bound;
 			return pivot_struct(false, col);
-		} else if (std::abs(a11) > m_alpha * m_beta * w1 + this->m_eps) {
+		} else if (std::abs(a11) >= m_alpha * m_beta * w1 - this->m_eps) {
 			return pivot_struct(false, col);
 		} else {
 			double wr = 0, arr = 0;
+			// TODO: remove this second scan after ensuring bit-accuracy
 			for (int j : this->A1_idx) {
 #if 1
 				if (j < col) {
@@ -69,7 +69,10 @@ public:
 
 			this->update_col(this->Ar, this->Ar_idx, r);
 			for (int j : this->Ar_idx) {
-				if (j < col) continue;
+				if (j < col) {
+					std::cerr << "this shouldnt happen" << std::endl;
+					continue;
+				}
 				el_type el = std::abs(this->Ar[j]);
 				if (j == r) {
 					arr = el;
@@ -78,9 +81,9 @@ public:
 				}
 			}
 		
-			if (std::abs(a11) * wr > m_alpha * pow(m_beta * w1, 2.0) + this->m_eps) {
+			if (std::abs(a11) * wr >= m_alpha * pow(m_beta * w1, 2.0) - this->m_eps) {
 				return pivot_struct(false, col);
-			} else if (arr > m_alpha * m_beta * wr + this->m_eps) {
+			} else if (arr >= m_alpha * m_beta * wr - this->m_eps) {
 				this->A1.swap(this->Ar);
 				this->A1_idx.swap(this->Ar_idx);
 				return pivot_struct(false, r);

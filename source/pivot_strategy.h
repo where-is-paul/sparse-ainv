@@ -30,6 +30,7 @@ public:
 
 	void set_regularization(double reg) {
 		m_reg = reg;
+		m_bound = 64 * m_eps * m_reg;
 	}
 
 	virtual pivot_struct find_pivot(int col) { 
@@ -53,6 +54,7 @@ protected:
 	void update_col(vector<el_type>& v, vector<int>& idx, int k) {
 		clean(v, idx);
 
+//#define AINV_MODE 1
 #ifdef AINV_MODE
 		int pk = (*p)[k];
 		for (int j : A->m_idx[pk]) {
@@ -101,14 +103,40 @@ protected:
 			j = (*pinv)[j];
 			seen0.add_set(L->m_list[j]);
 		}
+#if 0
+		std::vector<int> rest;
+		for (int i = k; i < A->n_cols(); i++) {
+			rest.push_back(i);
+			std::cerr << i << " ";
+		}
+		std::cerr << std::endl << std::endl;
+		seen0.add_set(rest);
+#endif
 		v[k] = 0;
 		seen0.add_single(k);
 		seen0.flush(idx);
 
+#if 0
+		sort(idx.begin(), idx.end());
+
+		std::cerr << "dot prod with vec: ";
+		for (int i = 0; i < Az_idx.size(); i++) {
+			std::cerr << Az_idx[i] << ":" << Az_x[i] << " ";
+		}
+		std::cerr << std::endl;
+
+		int nz = 0;
+#endif
 		for (int j : idx) {
 			col_wrapper<el_type> ak(Az_x.data(), Az_idx.data(), Az_x.size()),
 								 lj(L->m_x[j].data(), L->m_idx[j].data(), L->m_x[j].size());
 			v[j] = sparse_dot_prod(ak, lj, pinv);
+#if 0
+			if (abs(v[j]) > 1e-8) {
+				nz++;
+				std::cerr << "non-zero on index: " << j << " " << v[j] << std::endl;
+			}
+#endif
 		}
 #endif
 
@@ -126,7 +154,7 @@ protected:
 
 	set_unioner seen0;
 
-	double m_eps, m_reg;
+	double m_eps, m_reg, m_bound;
 };
 
 #endif

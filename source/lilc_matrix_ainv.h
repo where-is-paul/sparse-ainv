@@ -90,7 +90,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	// Tracks number of non-zeros per col so we can sort by sparsity
 	vector<int> num_nz(ncols, 1);
 	auto comp = [&](const int i, const int j) {
-		if (num_nz[i] == num_nz[j]) return p[i] > p[j];
+		if (num_nz[i] == num_nz[j]) return i < j;
 		return num_nz[i] < num_nz[j];
 	};
 
@@ -140,6 +140,8 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		L.m_idx[k].swap(L.m_idx[r]);
 		// Because nnz indices are sorted, we can just change the last
 		// elts indices since theyre guaranteed to be the diagonal
+		assert(L.m_idx[k].back() == r);
+		assert(L.m_idx[r].back() == k);
 		L.m_idx[k][L.m_idx[k].size()-1] = k;
 		L.m_idx[r][L.m_idx[r].size()-1] = r;
 
@@ -246,8 +248,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
-		int nscr = int(0.5 + log10(num_nz[*(--q.end())]));
+		int nscr = 0;//int(0.5 + ceil(log10(num_nz[*(--q.end())])));
 		
+		// TODO: Make this get next sparsest col, check if same with 1138_bus results currently in matlab
+
 		int best = *q.begin();
 		double bnorm = 0;
 		auto it = q.begin();
@@ -258,16 +262,19 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				best = *it;
 			}
 		}
-		if (num_nz[best] < num_nz[k]) {
+		//if (num_nz[best] < num_nz[k]) {
+			std::cerr << "pivoting " << k << " with " << best << std::endl;
 			pivot(k, best);
-		}
+			_sleep(200);
+		//}
 
+		const int bin = 20;
 		static std::map<int, bool> done;
 		static int np0 = 0, np1 = 0, np2 = 0;
 		int pcnt = (100*(k+1))/ncols;
-		if (pcnt%10 == 0 && !done[pcnt]) {
+		if (k == bin || pcnt%10 == 0 && !done[pcnt]) {
 			done[pcnt] = 1;
-			std::cerr << pcnt << " percent complete. ";
+			std::cerr << k << " " << pcnt << " percent complete. ";
 			int cnt = 0;
 			for (int i = 0; i < ncols; i++) cnt += static_cast<int>(L.m_x[i].size());
 			std::cerr << "nnz(M) = " << cnt << ", ";
@@ -276,13 +283,21 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			double fro = 0;
 			for (int i = 0; i < ncols; i++) fro += pow(norm(L.m_x[i], 2.0), 2.0);
 			std::cerr << "Frobenius norm: " << sqrt(fro) << ". Pivots: [" << np0 << " " << np1 << " " << np2 << "]. " << std::endl;
+
+			if (k == bin) {
+				L.nnz_count = cnt;
+				return;
+			}
 		}
 
 		// need to pivot on ((A*M(:,p(dd)))'*M(:,p(dd:end)))';
 		// or, M'(:, p(dd)) * (A M(:, p(dd:end))) = l_{pk}' * [A l_{pk} A l_{p{k+1}) ... A l_pn]
 		// this is equivalent to pivoting on the D[j..n] vector
 		pivot_struct piv_info = pivoter->find_pivot(k);
-
+		
+#if 0
+		std::cerr << "pivot info: " << piv_info.r << " " << piv_info.size_two << std::endl;
+#endif 
 		// swap necessary rows and columns
 		if (piv_info.size_two) {
 			// figure out list of D[k]'s to compute and update

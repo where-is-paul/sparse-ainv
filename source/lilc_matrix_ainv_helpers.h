@@ -122,6 +122,7 @@ inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double
 
 	work.clear();
 	nnzs.clear();
+	assert(vals.size() == curr_nnzs.size());
 	for (int i = 0; i < curr_nnzs.size(); i++) {
 		if (curr_nnzs[i] != keep && std::abs(vals[i]) <= tolerance) continue;
 		work.push_back(vals[i]);
@@ -177,6 +178,17 @@ el_type sparse_dot_prod(const col_wrapper<el_type>& a, const col_wrapper<el_type
 		tmp[(*p)[a.ptr[i]]] = 0;
 	}
 
+#if 1
+	// TODO HUH???? 
+	res = 0;
+	for (int i = 0; i < a.len; i++) {
+		int r = (*p)[a.ptr[i]];
+		for (int j = 0; j < b.len; j++) {
+			int s = b.ptr[j];
+			if (r == s) res += a.val[i] * b.val[j];
+		}
+	}
+#endif
 	//std::cerr << "res: " << res << endl;
 	return res;
 }

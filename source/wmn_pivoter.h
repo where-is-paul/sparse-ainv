@@ -34,9 +34,8 @@ public:
 		}
 
 		// regularization
-		double bound = this->m_eps * this->m_reg;
-		if (std::max(std::abs(a11), w1) <= bound) {
-			this->A1[col] = (a11 >= 0 ? 1 : -1) * bound;
+		if (std::max(std::abs(a11), w1) <= this->m_bound) {
+			this->A1[col] = (a11 >= 0 ? 1 : -1) * this->m_bound;
 			return pivot_struct(false, col);
 		} else if (std::abs(a11) > m_alpha * m_beta * w1 + this->m_eps) {
 			return pivot_struct(false, col);
@@ -65,8 +64,8 @@ public:
 			}
 		
 			double nl1 = norm(this->L->m_x[col], 2.0), nlr = norm(this->L->m_x[r], 2.0);
-			ga = norm(this->A1, this->A1_idx, 2.0) / std::max(std::abs(a11), bound);
-			gb = norm(this->Ar, this->Ar_idx, 2.0) / std::max(std::abs(arr), bound);
+			ga = norm(this->A1, this->A1_idx, 2.0) / std::max(std::abs(a11), this->m_bound);
+			gb = norm(this->Ar, this->Ar_idx, 2.0) / std::max(std::abs(arr), this->m_bound);
 			this->seen0.add_set(this->A1_idx);
 			this->seen0.add_set(this->Ar_idx);
 			this->seen0.flush(this->pvt_idx);

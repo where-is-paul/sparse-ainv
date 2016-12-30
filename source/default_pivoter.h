@@ -16,9 +16,8 @@ public:
 		this->update_col(this->A1, this->A1_idx, col);
 
 		// regularization
-		double bound = this->m_eps * this->m_reg;
-		if (this->A1[col] <= bound) {
-			this->A1[col] = (this->A1[col] >= 0 ? 1 : -1) * bound;
+		if (this->A1[col] <= this->m_bound) {
+			this->A1[col] = (this->A1[col] >= 0 ? 1 : -1) * this->m_bound;
 			return pivot_struct(false, col);
 		}
 
