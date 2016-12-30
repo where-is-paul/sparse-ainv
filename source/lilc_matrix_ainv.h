@@ -169,7 +169,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		// drop elements of col k
 		q.erase(k);
-		drop_tol(L.m_x[k], L.m_idx[k], par.tol, k, true);
+		drop_tol(L.m_x[k], L.m_idx[k], par.tol, k);
 		
 		// increase non-zero count of L
 		count += static_cast<int>(L.m_x[k].size());
@@ -226,7 +226,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				seen1[j] = true;
 			}
 			curr_nnzs = L.m_idx[i];
-			drop_tol(L.m_x[i], L.m_idx[i], /*0.1 * par.tol * min_M_colsum*/ par.tol / 4, i, true);
+			drop_tol(L.m_x[i], L.m_idx[i], 0.1 * par.tol * min_M_colsum, i, true);
 			
 			for (int j : L.m_idx[i]) {
 				seen1[j] = false;
@@ -246,11 +246,11 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		}
 	};
 
+	int np0 = 0, np1 = 0, np2 = 0;
+	std::map<int, bool> done;
 	//------------------- main loop: factoring begins -------------------------//
 	for (int k = 0; k < ncols; k++) {
-		int nscr = 0;//int(0.5 + ceil(log10(num_nz[*(--q.end())])));
-		
-		// TODO: Make this get next sparsest col, check if same with 1138_bus results currently in matlab
+		int nscr = int(0.5 + ceil(log10(num_nz[*(--q.end())])));
 
 		int best = *q.begin();
 		double bnorm = 0;
@@ -262,17 +262,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				best = *it;
 			}
 		}
-		//if (num_nz[best] < num_nz[k]) {
-			std::cerr << "pivoting " << k << " with " << best << std::endl;
-			pivot(k, best);
-			_sleep(200);
-		//}
+		pivot(k, best);
 
-		const int bin = 20;
-		static std::map<int, bool> done;
-		static int np0 = 0, np1 = 0, np2 = 0;
 		int pcnt = (100*(k+1))/ncols;
-		if (k == bin || pcnt%10 == 0 && !done[pcnt]) {
+		if (pcnt%10 == 0 && !done[pcnt]) {
 			done[pcnt] = 1;
 			std::cerr << k << " " << pcnt << " percent complete. ";
 			int cnt = 0;
@@ -283,11 +276,6 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			double fro = 0;
 			for (int i = 0; i < ncols; i++) fro += pow(norm(L.m_x[i], 2.0), 2.0);
 			std::cerr << "Frobenius norm: " << sqrt(fro) << ". Pivots: [" << np0 << " " << np1 << " " << np2 << "]. " << std::endl;
-
-			if (k == bin) {
-				L.nnz_count = cnt;
-				return;
-			}
 		}
 
 		// need to pivot on ((A*M(:,p(dd)))'*M(:,p(dd:end)))';
@@ -295,9 +283,6 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		// this is equivalent to pivoting on the D[j..n] vector
 		pivot_struct piv_info = pivoter->find_pivot(k);
 		
-#if 0
-		std::cerr << "pivot info: " << piv_info.r << " " << piv_info.size_two << std::endl;
-#endif 
 		// swap necessary rows and columns
 		if (piv_info.size_two) {
 			// figure out list of D[k]'s to compute and update
@@ -336,13 +321,6 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
 				DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
 
-#if 1
-				if (det == 0 || det != det) {
-					std::cerr << "bad det" << std::endl;
-					return;
-				}
-#endif
-
 				update_schur(-DinvZ[0] / det, j, k);
 				update_schur(-DinvZ[1] / det, j, k+1);
 			}
@@ -366,22 +344,11 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			}
 
 			for (int j : A1_idx) {
-				if (j < k) {
-					std::cerr << "wrongggg" << std::endl;
-					continue;
-				}
 				D[j] = A1[j];
 			}
 
 			for (int j : A1_idx) {
 				if (j <= k) continue;
-				
-#if 1
-				if (A1[k] == 0 || A1[k] != A1[k]) {
-					std::cerr << "bad dkk" << std::endl;
-					return;
-				}
-#endif
 
 				// Compute new schur complement
 				update_schur(-A1[j] / A1[k], j, k);

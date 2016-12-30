@@ -165,31 +165,17 @@ el_type sparse_dot_prod(const col_wrapper<el_type>& a, const col_wrapper<el_type
 	el_type res = 0;
 	for (int i = 0; i < a.len; i++) {
 		tmp[(*p)[a.ptr[i]]] = a.val[i];
-		//std::cerr << "doing dot prod... setting " << a.val[i] << " at " << (*p)[a.ptr[i]] << std::endl;
 	}
 
 
 	for (int i = 0; i < b.len; i++) {
 		res += b.val[i] * tmp[b.ptr[i]];
-		//std::cerr << "fetching from " << b.ptr[i] << " with " << b.val[i] << " " << b.val[i] * tmp[b.ptr[i]] << std::endl;
 	}
 	
 	for (int i = 0; i < a.len; i++) {
 		tmp[(*p)[a.ptr[i]]] = 0;
 	}
 
-#if 1
-	// TODO HUH???? 
-	res = 0;
-	for (int i = 0; i < a.len; i++) {
-		int r = (*p)[a.ptr[i]];
-		for (int j = 0; j < b.len; j++) {
-			int s = b.ptr[j];
-			if (r == s) res += a.val[i] * b.val[j];
-		}
-	}
-#endif
-	//std::cerr << "res: " << res << endl;
 	return res;
 }
 

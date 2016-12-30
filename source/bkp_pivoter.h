@@ -25,12 +25,6 @@ public:
 		int r = -1;
 
 		for (int j : this->A1_idx) {
-#if 1
-			if (j < col) {
-				std::cerr << "this should be removed" << std::endl;
-				continue;
-			}
-#endif
 			el_type el = this->A1[j];
 			if (j == col) {
 				a11 = el;
@@ -49,14 +43,6 @@ public:
 			double wr = 0, arr = 0;
 			// TODO: remove this second scan after ensuring bit-accuracy
 			for (int j : this->A1_idx) {
-#if 1
-				if (j < col) {
-					//TODO: Remove this
-					std::cerr << "this should be removed" << std::endl;
-					continue;
-				}
-#endif 
-
 				if (j == col) {
 					continue;
 				}
