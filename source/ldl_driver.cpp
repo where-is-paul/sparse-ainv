@@ -19,8 +19,8 @@ DEFINE_double(beta, 1.0, "A parameter to aggressiveness of Bunch-Kaufman pivotin
 		"but chooses poorer pivots. Values between 0 and 1 varies the aggressiveness of"
 		"BKP in a continuous manner.");
 
-DEFINE_string(pivot, "rook", "Determines what kind of pivoting algorithm will be used"
-		" during the factorization. Choices are 'rook' and 'bunch'. The default is 'rook'.");
+DEFINE_string(pivot, "bunch", "Determines what kind of pivoting algorithm will be used"
+		" during the factorization. Choices are 'wmn' and 'bunch'. The default is 'bunch'.");
 
 DEFINE_string(reordering, "amd", "Determines what sort of preordering will be used"
 		" on the matrix. Choices are 'amd', 'rcm', 'mc64', and 'none'.");

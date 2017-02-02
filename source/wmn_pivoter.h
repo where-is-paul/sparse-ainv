@@ -24,6 +24,7 @@ public:
 		double a11 = 0, w1 = 0;
 		int r = -1;
 
+		// TODO: REPLACE WITH MAX FUNCTION IN HELPERS
 		for (int j : this->A1_idx) {
 			el_type el = this->A1[j];
 			if (j == col) {
@@ -37,19 +38,21 @@ public:
 		if (std::max(std::abs(a11), w1) <= this->m_bound) {
 			this->A1[col] = (a11 >= 0 ? 1 : -1) * this->m_bound;
 			return pivot_struct(false, col);
-		} else if (std::abs(a11) > m_alpha * m_beta * w1 + this->m_eps) {
+		} else if (std::abs(a11) > m_alpha * m_beta * w1) {
 			return pivot_struct(false, col);
 		} else {
 			double arr = 0;
 			double ga = 0, gb = 0, gc = 0;
+
+			int pr = this->A->n_rows();
 			for (int j : this->A1_idx) {
 				if (j == col) {
 					continue;
 				}
 				el_type el = std::abs(this->A1[j]);
-				if (el >= m_beta * w1 - this->m_eps) {
+				if (el >= m_beta * w1 && (*this->pinv)[j] < pr) {
 					r = j;
-					break;
+					pr = (*this->pinv)[j];
 				}
 			}
 
@@ -64,8 +67,8 @@ public:
 			}
 		
 			double nl1 = norm(this->L->m_x[col], 2.0), nlr = norm(this->L->m_x[r], 2.0);
-			ga = norm(this->A1, this->A1_idx, 2.0) / std::max(std::abs(a11), this->m_bound);
-			gb = norm(this->Ar, this->Ar_idx, 2.0) / std::max(std::abs(arr), this->m_bound);
+			ga = norm(this->A1, this->A1_idx, 2.0) / std::max(std::abs(a11), this->m_eps);
+			gb = norm(this->Ar, this->Ar_idx, 2.0) / std::max(std::abs(arr), this->m_eps);
 			this->seen0.add_set(this->A1_idx);
 			this->seen0.add_set(this->Ar_idx);
 			this->seen0.flush(this->pvt_idx);

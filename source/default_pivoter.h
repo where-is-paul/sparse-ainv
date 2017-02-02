@@ -16,7 +16,7 @@ public:
 		this->update_col(this->A1, this->A1_idx, col);
 
 		// regularization
-		if (this->A1[col] <= this->m_bound) {
+		if (std::abs(this->A1[col]) <= this->m_bound) {
 			this->A1[col] = (this->A1[col] >= 0 ? 1 : -1) * this->m_bound;
 			return pivot_struct(false, col);
 		}

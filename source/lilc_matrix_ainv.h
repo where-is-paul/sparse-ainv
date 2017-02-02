@@ -112,7 +112,6 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	};
 
 	auto pivot = [&](int k, int r) {
-		//std::cerr << "swapping " << k << " and " << r << std::endl;
 		if (k == r) return;
 		q.erase(k);
 		q.erase(r);
@@ -135,7 +134,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			L.m_list[j].insert(k);
 		}
 
-		std::swap(L.m_list[k], L.m_list[r]);
+		L.m_list[k].swap(L.m_list[r]);
 		L.m_x[k].swap(L.m_x[r]);
 		L.m_idx[k].swap(L.m_idx[r]);
 		// Because nnz indices are sorted, we can just change the last
@@ -169,7 +168,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		// drop elements of col k
 		q.erase(k);
-		drop_tol(L.m_x[k], L.m_idx[k], par.tol, k);
+		drop_tol(L.m_x[k], L.m_idx[k], par.tol, k, true);
 		
 		// increase non-zero count of L
 		count += static_cast<int>(L.m_x[k].size());
@@ -211,6 +210,33 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	};
 
 	auto apply_dropping_rules = [&](const vector<int>& pvts, int k) {
+		for (int i : pvts) {
+			// Apply dropping rules to schur complement
+			if (i <= k) continue;
+
+			for (int j : L.m_idx[i]) {
+				seen1[j] = true;
+			}
+			curr_nnzs = L.m_idx[i];
+			drop_tol(L.m_x[i], L.m_idx[i], par.tol / 4, i, true);
+			
+			for (int j : L.m_idx[i]) {
+				seen1[j] = false;
+			}
+			for (int j : curr_nnzs) {
+				if (seen1[j]) {
+					seen1[j] = false;
+					L.m_list[j].erase(i);
+				}
+			}
+			curr_nnzs.clear();
+
+			// Fix ordering
+			q.erase(i);
+			num_nz[i] = static_cast<int>(L.m_x[i].size());
+			q.insert(i);
+		}
+		/*
 		// Figure out droptol
 		double min_M_colsum = std::numeric_limits<double>::max();
 		for (int i : pvts) {
@@ -244,6 +270,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			num_nz[i] = static_cast<int>(L.m_x[i].size());
 			q.insert(i);
 		}
+		*/
 	};
 
 	int np0 = 0, np1 = 0, np2 = 0;
@@ -256,7 +283,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		double bnorm = 0;
 		auto it = q.begin();
 		while (it != q.end() && nscr--) {
-			double cnorm = norm(L.m_x[*it], 10.0); // approx of max norm, replace later
+			double cnorm = norm(L.m_x[*it], 100.0); // approx of max norm, replace later
 			if (cnorm > bnorm) {
 				bnorm = cnorm;
 				best = *it;
@@ -326,9 +353,9 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			}
 			apply_dropping_rules(pvt_idx, k+1);
 
-			// Extra iter accounted for
 			advance_list(k);
 			advance_list(k+1);
+			// Extra iter accounted for
 			k++;
 		} else {
 			// figure out list of D[k]'s to compute and update
@@ -343,6 +370,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				np0++;
 			}
 
+
 			for (int j : A1_idx) {
 				D[j] = A1[j];
 			}
@@ -354,7 +382,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				update_schur(-A1[j] / A1[k], j, k);
 			}
 			apply_dropping_rules(A1_idx, k);
-			
+
 			advance_list(k);
 		}
 	}
