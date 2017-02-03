@@ -37,7 +37,7 @@ public:
 		if (std::max(std::abs(a11), w1) <= this->m_bound) {
 			this->A1[col] = (a11 >= 0 ? 1 : -1) * this->m_bound;
 			return pivot_struct(false, col);
-		} else if (std::abs(a11) >= m_alpha * m_beta * w1) {
+		} else if (std::abs(a11) >= m_alpha * m_beta * w1 - DBL_EPSILON) {
 			return pivot_struct(false, col);
 		} else {
 			int pr = this->A->n_rows();
@@ -48,7 +48,7 @@ public:
 					continue;
 				}
 				el_type el = std::abs(this->A1[j]);
-				if (el >= m_beta * w1 && (*this->pinv)[j] < pr) {
+				if (el >= m_beta * w1 - DBL_EPSILON && (*this->pinv)[j] < pr) {
 					r = j;
 					pr = (*this->pinv)[j];
 				}
@@ -68,9 +68,9 @@ public:
 				}
 			}
 		
-			if (std::abs(a11) * wr >= m_alpha * pow(m_beta * w1, 2.0)) {
+			if (std::abs(a11) * wr >= m_alpha * pow(m_beta * w1, 2.0) - DBL_EPSILON) {
 				return pivot_struct(false, col);
-			} else if (arr >= m_alpha * m_beta * wr) {
+			} else if (arr >= m_alpha * m_beta * wr - DBL_EPSILON) {
 				this->A1.swap(this->Ar);
 				this->A1_idx.swap(this->Ar_idx);
 				return pivot_struct(false, r);

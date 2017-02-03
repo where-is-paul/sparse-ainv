@@ -2,6 +2,7 @@
 #define _PIVOT_STRATEGY_H_
 
 #include <set_unioner.h>
+#include <climits>
 
 using std::vector;
 
