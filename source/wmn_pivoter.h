@@ -94,7 +94,7 @@ public:
 				this->A1.swap(this->Ar);
 				this->A1_idx.swap(this->Ar_idx);
 				return pivot_struct(false, r);
-			} else if (gc < gamma * ga || nl1r * gc < gamma * nl1 * ga) {
+			} else if (std::abs(a11) == 0 || gc < gamma * ga || nl1r * gc < gamma * nl1 * ga) {
 				return pivot_struct(true, r);
 			} else {
 				return pivot_struct(false, col);
