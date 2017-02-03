@@ -2,7 +2,7 @@
 #define _PIVOT_STRATEGY_H_
 
 #include <set_unioner.h>
-#include <climits>
+#include <cfloat>
 
 using std::vector;
 
