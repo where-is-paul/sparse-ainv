@@ -200,7 +200,7 @@ class solver {
 		void set_rhs(vector<el_type> b) {
 			rhs = b;
 			has_rhs = true;
-			if (msg_lvl) printf("Right hand side has %d entries.\n", rhs.size() );
+			if (msg_lvl) printf("Right hand side has %d entries.\n", (int) rhs.size() );
 		}
 		
 		/*! \brief Sets the reordering scheme for the solver.

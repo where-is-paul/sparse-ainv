@@ -34,14 +34,14 @@ inline std::vector<double> lilc_matrix<> :: sym_mc64(std::vector<int>& perm) {
 	}
 	
 	perm.assign(p, p+m_n_cols);
-	delete p;
+	delete[] p;
 	
 	// Return scaling factors
 	std::vector<double> res = std::vector<double>(s, s+m_n_cols);
 	for (int i = 0; i < m_n_cols; i++) {
 		res[i] = exp(res[i]);
 	}
-	delete s;
+	delete[] s;
 	
 	return res;
 }
