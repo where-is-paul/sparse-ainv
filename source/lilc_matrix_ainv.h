@@ -161,9 +161,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	auto advance_list = [&](int k) {
 		// increment row_first array if needed
 		for (int j : L.m_idx[k]) {
-			while (!L.m_list[j].empty() && *L.m_list[j].begin() <= k) {
-				L.m_list[j].erase(L.m_list[j].begin());
-			}
+			L.m_list[j].erase(k);
 		}
 
 		// drop elements of col k
@@ -180,28 +178,12 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		sparse_vec_add(el_type(1.0), lj, coef, lk, work, curr_nnzs);
 
-		// Add existing nnz into set
-		for (int i : L.m_idx[j]) {
-			seen1[i] = true;
-		}
-
 		L.m_x[j].swap(work);
 		L.m_idx[j].swap(curr_nnzs);
 
 		// Add to m_list if needed
 		for (int i : L.m_idx[j]) {
-			if (!seen1[i]) {
-				L.m_list[i].insert(j);
-			}
-			seen1[i] = false;
-		}
-
-		// Undo set additions
-		for (int i : curr_nnzs) {
-			if (seen1[i]) {
-				L.m_list[i].erase(j);
-			}
-			seen1[i] = false;
+			L.m_list[i].insert(j);
 		}
 
 		q.erase(j);
@@ -214,20 +196,17 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			// Apply dropping rules to schur complement
 			if (i <= k) continue;
 
-			for (int j : L.m_idx[i]) {
-				seen1[j] = true;
-			}
 			curr_nnzs = L.m_idx[i];
 			drop_tol(L.m_x[i], L.m_idx[i], par.tol / 4, i, true);
 			
 			for (int j : L.m_idx[i]) {
-				seen1[j] = false;
+				seen1[j] = true;
 			}
 			for (int j : curr_nnzs) {
-				if (seen1[j]) {
-					seen1[j] = false;
+				if (!seen1[j]) {
 					L.m_list[j].erase(i);
 				}
+				seen1[j] = false;
 			}
 			curr_nnzs.clear();
 
@@ -273,6 +252,9 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		*/
 	};
 
+	// Element dropping period
+	int period = 1;//(int) (sqrt(ncols) + 1);
+	int lastT = -1;
 	int np0 = 0, np1 = 0, np2 = 0;
 	std::map<int, bool> done;
 	//------------------- main loop: factoring begins -------------------------//
@@ -351,7 +333,10 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				update_schur(-DinvZ[0] / det, j, k);
 				update_schur(-DinvZ[1] / det, j, k+1);
 			}
-			apply_dropping_rules(pvt_idx, k+1);
+			if (k/period > lastT) {
+				apply_dropping_rules(pvt_idx, k+1);
+				lastT = k/period;
+			}
 
 			advance_list(k);
 			advance_list(k+1);
@@ -381,8 +366,11 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				// Compute new schur complement
 				update_schur(-A1[j] / A1[k], j, k);
 			}
-			apply_dropping_rules(A1_idx, k);
 
+			if (k/period > lastT) {
+				apply_dropping_rules(A1_idx, k);
+				lastT = k/period;
+			}
 			advance_list(k);
 		}
 	}

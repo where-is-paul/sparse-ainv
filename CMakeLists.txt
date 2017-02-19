@@ -25,7 +25,7 @@ else()
 endif()
 add_definitions( -DSYM_ILDL_DEBUG )
 
-include_directories( ./source ./extern/gflags ${MC64_INCLUDE_DIRS})
+include_directories( ./source ./extern/gflags ./extern/sparsehash/include ${MC64_INCLUDE_DIRS})
 
 add_executable( ldl_driver ${SRCS} ${GFLAGS_SRCS} ${HEADERS} )
 target_link_libraries(ldl_driver ${MC64_LIBRARIES})
