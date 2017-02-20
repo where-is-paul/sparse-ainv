@@ -8,11 +8,11 @@
 DEFINE_string(filename, "", "The filename of the matrix to be factored"
 		"(in matrix-market format).");
 
-DEFINE_double(fill, 3.0, "A parameter to control memory usage. Each column is guaranteed"
-		"to have fewer than fill*nnz(A) elements.");
+//DEFINE_double(fill, 3.0, "A parameter to control memory usage. Each column is guaranteed"
+//		"to have fewer than fill*nnz(A) elements.");
 
-DEFINE_double(tol, 0.001, "A parameter to control agressiveness of dropping. In each column k,"
-		"elements less than tol*||L(k+1:n,k)|| (1-norm) are dropped.");
+DEFINE_double(tol, 0.001, "A parameter to control agressiveness of dropping. If 'relative', then in each column k,"
+		"elements less than tol*||L(k+1:n,k)|| (1-norm) are dropped. If 'absolute', each element less than tol is dropped.");
 
 DEFINE_double(beta, 1.0, "A parameter to aggressiveness of Bunch-Kaufman pivoting (BKP). "
 		"When pp_tol >= 1, full BKP is used. When pp_tol is 0, BKP is faster"
@@ -50,6 +50,8 @@ DEFINE_string(solver, "sqmr", "The solver used if supplied a right-hand side. Th
 DEFINE_double(solver_tol, 1e-6, "A tolerance for the iterative solver used. When the iterate x satisfies ||Ax-b||/||b|| < solver_tol, the solver is terminated. Has no effect when doing a full solve.");
 
 DEFINE_string(rhs_file, "", "The filename of the right hand side (in matrix-market format).");
+
+DEFINE_string(drop_type, "absolute", "The type of drop tolerance used for removing small elements. Options are 'relative' or 'absolute'.");
 
 int main(int argc, char* argv[])
 {
@@ -106,6 +108,7 @@ int main(int argc, char* argv[])
 		solv.set_rhs(rhs);
 	}
 
+	solv.set_drop_type(FLAGS_drop_type.c_str());
 	solv.set_pivot(FLAGS_pivot.c_str());
 	sparse_ainv::solver_params par;
 	par.ainv_tol = FLAGS_tol;

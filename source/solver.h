@@ -53,6 +53,13 @@ struct solver_params {
 	double shift;
 	int max_iters;
 	
+	struct drop_type {
+		enum {
+			RELATIVE,
+			ABSOLUTE
+		};
+	} drop_type;
+	
 	solver_params() {
 		ainv_tol = 1e-2;
 		ainv_beta = 1.0;
@@ -146,6 +153,7 @@ class solver {
 		block_diag_matrix<el_type> D;	///<The diagonal factor of A.
 		int reorder_type; ///<Set to to 0 for AMD, 1 for RCM, 2 for no reordering.
         int piv_type; ///<Set to 0 for rook, 1 for bunch.
+		int dropping_type; ///<Set to 0 for relative dropping, 1 for absolute
 		
         int equil_type; ///<The equilibration method used. Set to 1 for max-norm equilibriation.
 		
@@ -165,6 +173,7 @@ class solver {
 			reorder_type = reordering_type::AMD;
 			equil_type = equilibration_type::BUNCH;
 			solve_type = solver_type::SQMR;
+			dropping_type = drop_type::ABSOLUTE;
     		has_rhs = false;
 		}
 				
@@ -229,6 +238,16 @@ class solver {
 			}
 		}
         
+		/*! \brief Decides the dropping type of AINV.
+		*/
+		void set_drop_type(const char* drop) {
+			if (strcmp(drop, "relative") == 0) {
+				dropping_type = drop_type::RELATIVE;
+			} else if (strcmp(drop, "absolute") == 0) {
+				dropping_type = drop_type::ABSOLUTE;
+			}
+		}
+
 		/*! \brief Decides whether we perform a full solve or not.
 		*/
 		void set_solver(const char* solver) {
@@ -347,6 +366,7 @@ class solver {
 			ainv_par.tol = par.ainv_tol;
 			ainv_par.beta = par.ainv_beta;
 			ainv_par.piv_type = piv_type;
+			ainv_par.drop_type = dropping_type;
 
             A.ainv(L, D, perm, ainv_par);
 			dif = clock() - start; total += dif;

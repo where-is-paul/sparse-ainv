@@ -192,12 +192,25 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	};
 
 	auto apply_dropping_rules = [&](const vector<int>& pvts, int k) {
+		double tol = 0;
+		if (par.drop_type == drop_type::ABSOLUTE) {
+			tol = par.tol / 4;
+		} else if (par.drop_type == drop_type::RELATIVE) {
+			// Figure out droptol
+			double min_M_colsum = std::numeric_limits<double>::max();
+			for (int i : pvts) {
+				if (i <= k) continue;
+				min_M_colsum = std::min(min_M_colsum, norm(L.m_x[i], 2.0));
+			}
+			tol = 0.1 * par.tol * min_M_colsum;
+		}
+
 		for (int i : pvts) {
 			// Apply dropping rules to schur complement
 			if (i <= k) continue;
 
 			curr_nnzs = L.m_idx[i];
-			drop_tol(L.m_x[i], L.m_idx[i], par.tol / 4, i, true);
+			drop_tol(L.m_x[i], L.m_idx[i], tol, i, true);
 			
 			for (int j : L.m_idx[i]) {
 				seen1[j] = true;
@@ -215,41 +228,6 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			num_nz[i] = static_cast<int>(L.m_x[i].size());
 			q.insert(i);
 		}
-		/*
-		// Figure out droptol
-		double min_M_colsum = std::numeric_limits<double>::max();
-		for (int i : pvts) {
-			if (i <= k) continue;
-			min_M_colsum = std::min(min_M_colsum, pow(norm(L.m_x[i], 2.0), 2.0));
-		}
-
-		for (int i : pvts) {
-			// Apply dropping rules to schur complement
-			if (i <= k) continue;
-
-			for (int j : L.m_idx[i]) {
-				seen1[j] = true;
-			}
-			curr_nnzs = L.m_idx[i];
-			drop_tol(L.m_x[i], L.m_idx[i], 0.1 * par.tol * min_M_colsum, i, true);
-			
-			for (int j : L.m_idx[i]) {
-				seen1[j] = false;
-			}
-			for (int j : curr_nnzs) {
-				if (seen1[j]) {
-					seen1[j] = false;
-					L.m_list[j].erase(i);
-				}
-			}
-			curr_nnzs.clear();
-
-			// Fix ordering
-			q.erase(i);
-			num_nz[i] = static_cast<int>(L.m_x[i].size());
-			q.insert(i);
-		}
-		*/
 	};
 
 	// Element dropping period

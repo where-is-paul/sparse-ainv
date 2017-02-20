@@ -41,10 +41,18 @@ struct pivot_type {
 	};
 };
 
+struct drop_type {
+	enum {
+		RELATIVE,
+		ABSOLUTE
+	};
+};
+
 struct params {
 	double tol;
 	double beta;
 	int piv_type;
+	int drop_type;
 };
 
 template<class el_type = double> 
