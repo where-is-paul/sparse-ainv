@@ -201,6 +201,13 @@ public:
 	*/
 	void sym_amd(vector<int>& perm);
 	
+	/*! \brief Returns a METIS ordering of the matrix A (stored in perm). 
+		
+		A detailed description of this function as well as all its subfunctions can be found in “A Fast and Highly Quality Multilevel Scheme for Partitioning Irregular Graphs”. George Karypis and Vipin Kumar. SIAM Journal on Scientific Computing, Vol. 20, No. 1, pp. 359—392, 1999.
+		\param perm An empty permutation vector (filled on function completion).
+	*/
+	void sym_metis(vector<int>& perm);
+	
 	/*! \brief Returns MC64 ordering of the matrix A (stored in perm), and an optional scaling. 
 		
 		A detailed description of this function as well as all its subfunctions can be found at http://www.hsl.rl.ac.uk/catalogue/hsl_mc64.html
@@ -334,7 +341,8 @@ public:
 		\param row_ind The row indices of each value.
 		\param col_ptr The length of each column in row_ind.
 	*/
-	bool to_csc(vector<double>& val, vector<int>& row_ind, vector<int>& col_ptr) {
+	template <class index_type>
+	bool to_csc(vector<el_type>& val, vector<index_type>& row_ind, vector<index_type>& col_ptr) {
 		val.clear();
 		row_ind.clear();
 		col_ptr.clear();
@@ -373,6 +381,7 @@ public:
 #include <lilc_matrix_find_root.h>
 #include <lilc_matrix_sym_rcm.h>
 #include <lilc_matrix_sym_amd.h>
+#include <lilc_matrix_sym_metis.h>
 #include <lilc_matrix_sym_mc64.h>
 #include <lilc_matrix_sym_perm.h>
 #include <lilc_matrix_sym_equil.h>

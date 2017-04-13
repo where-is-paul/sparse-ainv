@@ -16,6 +16,7 @@ struct reordering_type {
 		NONE,
 		AMD,
 		RCM,
+		METIS,
 		MC64
 	};
 };
@@ -151,8 +152,8 @@ class solver {
 		
         vector<int> perm;	///<A permutation vector containing all permutations on A.
 		block_diag_matrix<el_type> D;	///<The diagonal factor of A.
-		int reorder_type; ///<Set to to 0 for AMD, 1 for RCM, 2 for no reordering.
-        int piv_type; ///<Set to 0 for rook, 1 for bunch.
+		int reorder_type; ///<See reordering_type enum
+        int piv_type; ///<See pivot_Type enum.
 		int dropping_type; ///<Set to 0 for relative dropping, 1 for absolute
 		
         int equil_type; ///<The equilibration method used. Set to 1 for max-norm equilibriation.
@@ -219,6 +220,8 @@ class solver {
 				reorder_type = reordering_type::RCM;
 			} else if (strcmp(ordering, "amd") == 0) {
 				reorder_type = reordering_type::AMD;
+			} else if (strcmp(ordering, "metis") == 0) {
+				reorder_type = reordering_type::METIS;
 			} else if (strcmp(ordering, "mc64") == 0) {
 				reorder_type = reordering_type::MC64;
 			} else if (strcmp(ordering, "none") == 0) {
@@ -338,6 +341,10 @@ class solver {
 					case reordering_type::RCM:
 						A.sym_rcm(perm);
 						perm_name = "RCM";
+						break;
+					case reordering_type::METIS:
+						A.sym_metis(perm);
+						perm_name = "METIS";
 						break;
 #if ENABLE_MC64
 					case reordering_type::MC64:
