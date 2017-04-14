@@ -12,8 +12,8 @@ using std::vector;
 using namespace tbb;
 
 struct set_unioner {
-	concurrent_vector<bool> in_set;
-	concurrent_vector<int> indices;
+	vector<bool> in_set;
+	vector<int> indices;
 
 	void reset(int sz) {
 		in_set.clear();
@@ -24,6 +24,7 @@ struct set_unioner {
 	// PRECONDITION: s contains no duplicates
 	template<class Container>
 	void add_set(const Container& s) {
+		/*
 		parallel_for_each(s.begin(), s.end(),
 			[&](int x) {
 				if (!in_set[x]) {
@@ -31,7 +32,13 @@ struct set_unioner {
 					in_set[x] = true;
 				}
 			}
-		);
+		);*/
+		for (int x : s) {
+			if (!in_set[x]) {
+				indices.push_back(x);
+				in_set[x] = true;
+			}
+		}
 	}
 
 	void add_single(const int& x) {
@@ -42,16 +49,24 @@ struct set_unioner {
 	}
 
 	void flush(vector<int>& res) {
+		/*
 		parallel_for_each(indices.begin(), indices.end(),
 			[&](int x) {
 				in_set[x] = false;
 			}
 		);
+		*/
+		for (int x : indices) {
+			in_set[x] = false;
+		}
 
+		/*
 		res.clear();
 		for (int x : indices) {
 			res.push_back(x);
 		}
+		*/
+		res.swap(indices);
 		indices.clear();
 	}
 };
