@@ -6,6 +6,9 @@
 #include <wmn_pivoter.h>
 #include <set_unioner.h>
 
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
+
 #include <map>
 
 #if 0
@@ -16,6 +19,8 @@ unsigned int fp_control_state = _controlfp(_EM_INEXACT, _MCW_EM);
 using std::endl;
 using std::cout;
 using std::abs;
+
+using namespace tbb;
 
 template <class el_type>
 void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_type>& D, idx_vector_type& perm, params par) {
@@ -172,15 +177,20 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		count += static_cast<int>(L.m_x[k].size());
 	};
 
-	auto update_schur = [&](el_type coef, int j, int k) {
+	// Updates a column of the schur complement. Split into two functions
+	// to facilitate parallelization
+	auto update_schur0 = [&](el_type coef, int j, int k) {
+		elt_vector_type wrk;
+		idx_vector_type cnnzs;
 		col_wrapper<el_type> lk(L.m_x[k].data(), L.m_idx[k].data(), L.m_x[k].size()),
 							 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
 
-		sparse_vec_add(el_type(1.0), lj, coef, lk, work, curr_nnzs);
+		sparse_vec_add(el_type(1.0), lj, coef, lk, wrk, cnnzs);
+		L.m_x[j].swap(wrk);
+		L.m_idx[j].swap(cnnzs);
+	};
 
-		L.m_x[j].swap(work);
-		L.m_idx[j].swap(curr_nnzs);
-
+	auto update_schur1 = [&](int j) {
 		// Add to m_list if needed
 		for (int i : L.m_idx[j]) {
 			L.m_list[i].insert(j);
@@ -300,17 +310,30 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 			// Z(:, [j0, j1]) -= Z(:, [k, k+1]) * [a b; c d]
 			//[a * zk + c * z_k+1, b * zk + d * zk+1]
-			el_type DinvZ[2];
 			el_type det = Di[0][0] * Di[1][1] - Di[0][1] * Di[1][0];
+			parallel_for(blocked_range<size_t>(0, pvt_idx.size()),
+				[&](const blocked_range<size_t>& r) {
+					el_type DinvZ[2];
+					for (size_t id = r.begin(); id != r.end(); id++) {
+						int j = pvt_idx[id];
+						if (j <= k+1) continue;
+
+						DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
+						DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
+
+						update_schur0(-DinvZ[0] / det, j, k);
+						update_schur0(-DinvZ[1] / det, j, k+1);
+					}
+				}
+			);
+
 			for (int j : pvt_idx) {
 				if (j <= k+1) continue;
 
-				DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
-				DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
-
-				update_schur(-DinvZ[0] / det, j, k);
-				update_schur(-DinvZ[1] / det, j, k+1);
+				update_schur1(j);
+				update_schur1(j);
 			}
+
 			if (k/period > lastT) {
 				apply_dropping_rules(pvt_idx, k+1);
 				lastT = k/period;
@@ -338,11 +361,20 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				D[j] = A1[j];
 			}
 
+			parallel_for(blocked_range<size_t>(0, A1_idx.size()),
+				[&](const blocked_range<size_t>& r) {
+					for (size_t id = r.begin(); id != r.end(); id++) {
+						int j = A1_idx[id];
+						if (j <= k) continue;
+						// Compute new schur complement
+						update_schur0(-A1[j] / A1[k], j, k);
+					}
+				}
+			);
+
 			for (int j : A1_idx) {
 				if (j <= k) continue;
-
-				// Compute new schur complement
-				update_schur(-A1[j] / A1[k], j, k);
+				update_schur1(j);
 			}
 
 			if (k/period > lastT) {
