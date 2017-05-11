@@ -118,7 +118,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			if (L.m_list[j].count(r)) {
 				continue;
 			}
-			L.m_list[j].unsafe_erase(k);
+			L.m_list[j].erase(k);
 			L.m_list[j].insert(r);
 		}
 
@@ -126,7 +126,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			if (L.m_list[j].count(k)) {
 				continue;
 			}
-			L.m_list[j].unsafe_erase(r);
+			L.m_list[j].erase(r);
 			L.m_list[j].insert(k);
 		}
 
@@ -157,7 +157,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	auto advance_list = [&](int k) {
 		// increment row_first array if needed
 		for (int j : L.m_idx[k]) {
-			L.m_list[j].unsafe_erase(k);
+			L.m_list[j].erase(k);
 		}
 
 		// drop elements of col k
@@ -168,6 +168,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		count += static_cast<int>(L.m_x[k].size());
 	};
 
+	concurrent_vector<std::pair<int, int>> to_insert;
 	auto update_schur = [&](el_type coef, int j, int k) {
 		col_wrapper<el_type> lk(L.m_x[k].data(), L.m_idx[k].data(), L.m_x[k].size()),
 							 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
@@ -180,17 +181,19 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		L.m_idx[j].swap(curr_nnzs);
 
 		// Add to m_list if needed
-		parallel_for(blocked_range<size_t>(0, extra.size(), 100),
-			[&](const blocked_range<size_t>& r) {
-				for (int id = r.begin(); id != r.end(); id++) {
-					int i = extra[id];
-					L.m_list[i].insert(j);
-				}
-			}
-		);
+		for (int i : extra) {
+			to_insert.push_back(std::make_pair(i, j));
+		}
 	};
 
 	auto update_schur_cleanup = [&](int j) {
+		if (to_insert.size() > 0) {
+			for (auto p : to_insert) {
+				L.m_list[p.first].insert(p.second);
+			}
+			to_insert.clear();
+		}
+
 		q.erase(j);
 		num_nz[j] = static_cast<int>(L.m_idx[j].size());
 		q.insert(j);
@@ -218,7 +221,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			drop_tol(L.m_x[i], L.m_idx[i], tol, i, &dropped, true);
 			
 			for (int j : dropped) {
-				L.m_list[j].unsafe_erase(i);
+				L.m_list[j].erase(i);
 			}
 			
 			// Fix ordering
