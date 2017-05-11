@@ -56,10 +56,18 @@ struct set_unioner {
 			}
 		);
 		*/
+		parallel_for(blocked_range<size_t>(0, indices.size(), 10000),
+			[&](const blocked_range<size_t> r) {
+				for (int i = r.begin(); i != r.end(); i++) {
+					in_set[indices[i]] = false;
+				}
+			}
+		);
+		/*
 		for (int x : indices) {
 			in_set[x] = false;
 		}
-
+		*/
 		/*
 		res.clear();
 		for (int x : indices) {

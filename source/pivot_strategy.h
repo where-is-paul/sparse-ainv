@@ -3,6 +3,10 @@
 
 #include <set_unioner.h>
 #include <cfloat>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
+
+using namespace tbb;
 
 using std::vector;
 
@@ -55,7 +59,7 @@ protected:
 	void update_col(vector<el_type>& v, vector<int>& idx, int k) {
 		clean(v, idx);
 
-//#define AINV_MODE 1
+#define AINV_MODE 1
 #ifdef AINV_MODE
 		int pk = (*p)[k];
 		for (int j : A->m_idx[pk]) {
@@ -66,11 +70,16 @@ protected:
 		seen0.add_single(k);
 		seen0.flush(idx);
 
-		for (int j : idx) {
-			col_wrapper<el_type> ak(A->m_x[pk].data(), A->m_idx[pk].data(), A->m_x[pk].size()),
+		parallel_for(blocked_range<size_t>(0, idx.size(), 10), 
+			[&](const blocked_range<size_t> r) {
+				for (int i = r.begin(); i < r.end(); i++) {
+					int j = idx[i];
+					col_wrapper<el_type> ak(A->m_x[pk].data(), A->m_idx[pk].data(), A->m_x[pk].size()),
 								 lj(L->m_x[j].data(), L->m_idx[j].data(), L->m_x[j].size());
-			v[j] = sparse_dot_prod(ak, lj, pinv);
-		}
+					v[j] = sparse_dot_prod(ak, lj, pinv);
+				}
+			}
+		);
 #else
 		// Compute a sparse-sparse matrix vector product
 		static vector<el_type> Az_x, work;

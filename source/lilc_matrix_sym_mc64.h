@@ -7,7 +7,7 @@
 
 // Change include file above to change support to floats, complex, complex doubles, etc.
 template<> 
-inline std::vector<double> lilc_matrix<> :: sym_mc64(std::vector<int>& perm) {
+inline std::vector<double> lilc_matrix<double> :: sym_mc64(std::vector<int>& perm) {
 	std::vector<double> row_val;
 	std::vector<int> row_ind, col_ptr;
 	

@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 
-	typedef long double precision_type;
+	typedef double precision_type;
 	sparse_ainv::solver<precision_type> solv;
 
 	//default is statistics output
