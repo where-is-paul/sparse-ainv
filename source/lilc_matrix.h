@@ -14,6 +14,8 @@
 
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
+#include <tbb/parallel_for_each.h>
+#include <tbb/concurrent_unordered_set.h>
 
 #include <sparsehash/dense_hash_set>
 
@@ -78,7 +80,7 @@ public:
 	vector<elt_vector_type> m_x;///<The values of the nonzeros in the matrix.
 
 	//vector<idx_vector_type> m_list;
-	vector<dense_hash_set<int>> m_list;
+	vector<concurrent_unordered_set<int>> m_list;
     
 	block_diag_matrix<el_type> S; ///<A diagonal scaling matrix S such that SAS will be equilibriated in the max-norm (i.e. every row/column has norm 1). S is constructed after running the sym_equil() function, after which SAS will be stored in place of A.
 	
@@ -90,10 +92,6 @@ public:
 		m_x.reserve(n_cols);
 		m_idx.reserve(n_cols);
 		m_list.reserve(n_cols);
-		for (int i = 0; i < n_cols; i++) {
-			m_list[i].set_empty_key(-1);
-			m_list[i].set_deleted_key(-2);
-		}
 		nnz_count = 0;
 		eps = std::sqrt(std::numeric_limits<el_type>::epsilon());
 	}
@@ -170,10 +168,6 @@ public:
 		m_x.resize(n_cols);
 		m_idx.resize(n_cols);
 		m_list.resize(n_cols);
-		for (int i = 0; i < n_cols; i++) {
-			m_list[i].set_empty_key(-1);
-			m_list[i].set_deleted_key(-2);
-		}
 		S.resize(n_cols, 1);
 	}
 	

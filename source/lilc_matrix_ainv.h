@@ -118,7 +118,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			if (L.m_list[j].count(r)) {
 				continue;
 			}
-			L.m_list[j].erase(k);
+			L.m_list[j].unsafe_erase(k);
 			L.m_list[j].insert(r);
 		}
 
@@ -126,7 +126,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			if (L.m_list[j].count(k)) {
 				continue;
 			}
-			L.m_list[j].erase(r);
+			L.m_list[j].unsafe_erase(r);
 			L.m_list[j].insert(k);
 		}
 
@@ -157,7 +157,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	auto advance_list = [&](int k) {
 		// increment row_first array if needed
 		for (int j : L.m_idx[k]) {
-			L.m_list[j].erase(k);
+			L.m_list[j].unsafe_erase(k);
 		}
 
 		// drop elements of col k
@@ -183,7 +183,9 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		for (int i : extra) {
 			L.m_list[i].insert(j);
 		}
+	};
 
+	auto update_schur_cleanup = [&](int j) {
 		q.erase(j);
 		num_nz[j] = static_cast<int>(L.m_idx[j].size());
 		q.insert(j);
@@ -211,9 +213,20 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			drop_tol(L.m_x[i], L.m_idx[i], tol, i, &dropped, true);
 			
 			for (int j : dropped) {
-				L.m_list[j].erase(i);
+				L.m_list[j].unsafe_erase(i);
 			}
 			
+			// Fix ordering
+			q.erase(i);
+			num_nz[i] = static_cast<int>(L.m_x[i].size());
+			q.insert(i);
+		}
+	};
+
+	auto apply_dropping_rules_cleanup = [&](const vector<int>& pvts, int k) {
+		for (int i : pvts) {
+			if (i <= k) continue;
+
 			// Fix ordering
 			q.erase(i);
 			num_nz[i] = static_cast<int>(L.m_x[i].size());
@@ -291,17 +304,20 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 			// Z(:, [j0, j1]) -= Z(:, [k, k+1]) * [a b; c d]
 			//[a * zk + c * z_k+1, b * zk + d * zk+1]
-			el_type DinvZ[2];
+			
 			el_type det = Di[0][0] * Di[1][1] - Di[0][1] * Di[1][0];
-			for (int j : pvt_idx) {
-				if (j <= k+1) continue;
+			parallel_for_each(pvt_idx.begin(), pvt_idx.end(),
+				[&](int j) {
+					if (j <= k+1) return;
+					el_type DinvZ[2];
+					DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
+					DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
 
-				DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
-				DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
+					update_schur(-DinvZ[0] / det, j, k);
+					update_schur(-DinvZ[1] / det, j, k+1);
+				}
+			);
 
-				update_schur(-DinvZ[0] / det, j, k);
-				update_schur(-DinvZ[1] / det, j, k+1);
-			}
 			if (k/period > lastT) {
 				apply_dropping_rules(pvt_idx, k+1);
 				lastT = k/period;
@@ -329,12 +345,14 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				D[j] = A1[j];
 			}
 
-			for (int j : A1_idx) {
-				if (j <= k) continue;
+			parallel_for_each(A1_idx.begin(), A1_idx.end(),
+				[&](int j) {
+					if (j <= k) return;
 
-				// Compute new schur complement
-				update_schur(-A1[j] / A1[k], j, k);
-			}
+					// Compute new schur complement
+					update_schur(-A1[j] / A1[k], j, k);
+				}
+			);
 
 			if (k/period > lastT) {
 				apply_dropping_rules(A1_idx, k);
