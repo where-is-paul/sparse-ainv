@@ -12,6 +12,9 @@
 #include <set>
 #include <unordered_set>
 
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
+
 #include <sparsehash/dense_hash_set>
 
 #include <block_diag_matrix.h>
@@ -28,6 +31,7 @@ using std::vector;
 using std::set;
 using std::unordered_set;
 using google::dense_hash_set;
+using namespace tbb;
 
 //-------------- types of pivoting procedures ----------------//
 /*! A simple enum class for listing the type of pivoting procedure SYM-ILDL uses.

@@ -5,6 +5,7 @@ project( sparse-ainv )
 set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH} )
 find_package(MC64 REQUIRED)
 find_package(METIS REQUIRED)
+find_package(TBB REQUIRED)
 
 file(GLOB HEADERS
 	"./source/*.h"
@@ -26,7 +27,7 @@ else()
 endif()
 add_definitions( -DSYM_ILDL_DEBUG )
 
-include_directories( ./source ./extern/gflags ./extern/sparsehash/include ${MC64_INCLUDE_DIRS} ${METIS_INCLUDE_DIRS})
+include_directories( ./source ./extern/gflags ./extern/sparsehash/include ${MC64_INCLUDE_DIRS} ${METIS_INCLUDE_DIRS} ${TBB_INCLUDE_DIRS})
 
-add_executable( ldl_driver ${SRCS} ${GFLAGS_SRCS} ${HEADERS} )
-target_link_libraries(ldl_driver ${MC64_LIBRARIES} ${METIS_LIBRARIES})
+add_executable( ldl_driver ${SRCS} ${GFLAGS_SRCS} ${HEADERS} ${TBB_INCLUDE_DIRS})
+target_link_libraries(ldl_driver ${MC64_LIBRARIES} ${METIS_LIBRARIES} ${TBB_LIBRARIES})
