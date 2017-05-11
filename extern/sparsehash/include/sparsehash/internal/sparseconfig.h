@@ -6,10 +6,18 @@
 /* Namespace for Google classes */
 #define GOOGLE_NAMESPACE  ::google
 
+#ifndef linux
+#define linux 0
+#endif
+
 #if (_MSC_VER >= 1800 )
 
 /* the location of the header defining hash functions */
 #define HASH_FUN_H  <unordered_map>
+
+#elif (linux)
+
+#define HASH_FUN_H <tr1/functional>
 
 #else /* Earlier than VSC++ 2013 */ 
 
@@ -18,8 +26,16 @@
  
 #endif
 
+#if (linux)
+
+#define HASH_NAMESPACE std::tr1
+
+#else
+
 /* the namespace of the hash<> function */
 #define HASH_NAMESPACE  stdext
+
+#endif
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -45,11 +61,21 @@
 /* Define to 1 if the system has the type `__uint16'. */
 #define HAVE___UINT16  1
 
+#if (linux)
+
+#define SPARSEHASH_HASH  HASH_NAMESPACE::hash
+
+#define SPARSEHASH_HASH_NO_NAMESPACE  hash
+
+#else
+
 /* The system-provided hash function including the namespace. */
 #define SPARSEHASH_HASH  HASH_NAMESPACE::hash_compare
 
 /* The system-provided hash function, in namespace HASH_NAMESPACE. */
 #define SPARSEHASH_HASH_NO_NAMESPACE  hash_compare
+
+#endif 
 
 /* Stops putting the code inside the Google namespace */
 #define _END_GOOGLE_NAMESPACE_  }
