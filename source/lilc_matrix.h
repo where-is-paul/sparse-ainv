@@ -17,6 +17,7 @@
 #include <tbb/parallel_for_each.h>
 #include <tbb/concurrent_unordered_set.h>
 #include <tbb/concurrent_vector.h>
+#include <tbb/concurrent_unordered_map.h>
 
 #include <sparsehash/dense_hash_set>
 

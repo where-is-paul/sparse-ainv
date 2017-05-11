@@ -168,7 +168,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		count += static_cast<int>(L.m_x[k].size());
 	};
 
-	concurrent_vector<std::pair<int, int>> to_insert;
+	concurrent_unordered_map<int, concurrent_vector<int>> to_change;
 	auto update_schur = [&](el_type coef, int j, int k) {
 		col_wrapper<el_type> lk(L.m_x[k].data(), L.m_idx[k].data(), L.m_x[k].size()),
 							 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
@@ -181,17 +181,33 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		L.m_idx[j].swap(curr_nnzs);
 
 		// Add to m_list if needed
+		/*
+		parallel_for(blocked_range<size_t>(0, extra.size(), 100), 
+			[&](const blocked_range<size_t>& r) {
+				for (int id = r.begin(); id != r.end(); id++) {
+					int i = extra[id];
+					to_change[i].push_back(j);
+				}
+			}
+		);
+		//*/
+		///*
 		for (int i : extra) {
-			to_insert.push_back(std::make_pair(i, j));
+			to_change[i].push_back(j);
 		}
+		//*/
 	};
 
 	auto update_schur_cleanup = [&](int j) {
-		if (to_insert.size() > 0) {
-			for (auto p : to_insert) {
-				L.m_list[p.first].insert(p.second);
-			}
-			to_insert.clear();
+		if (to_change.size() > 0) {
+			parallel_for_each(to_change.begin(), to_change.end(),
+				[&](const std::pair<int, concurrent_vector<int>>& p) {
+					for (auto q : p.second) {
+						L.m_list[p.first].insert(q);
+					}
+				}
+			);
+			to_change.clear();
 		}
 
 		q.erase(j);
@@ -213,22 +229,35 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			tol = 0.1 * par.tol * min_M_colsum;
 		}
 
-		for (int i : pvts) {
-			// Apply dropping rules to schur complement
-			if (i <= k) continue;
+		parallel_for_each(pvts.begin(), pvts.end(),
+			[&](int i) {
+				// Apply dropping rules to schur complement
+				if (i <= k) return;
 
-			vector<int> dropped;
-			drop_tol(L.m_x[i], L.m_idx[i], tol, i, &dropped, true);
+				vector<int> dropped;
+				drop_tol(L.m_x[i], L.m_idx[i], tol, i, &dropped, true);
 			
-			for (int j : dropped) {
-				L.m_list[j].erase(i);
+				for (int j : dropped) {
+					to_change[j].push_back(i);
+				}
 			}
-			
-			// Fix ordering
+		);
+
+		parallel_for_each(to_change.begin(), to_change.end(),
+			[&](const std::pair<int, concurrent_vector<int>>& p) {
+				for (auto q : p.second) {
+					L.m_list[p.first].erase(q);			
+				}
+			}
+		);
+		to_change.clear();
+
+		for (int i : pvts) {
 			q.erase(i);
 			num_nz[i] = static_cast<int>(L.m_x[i].size());
 			q.insert(i);
 		}
+	
 	};
 
 	auto apply_dropping_rules_cleanup = [&](const vector<int>& pvts, int k) {
