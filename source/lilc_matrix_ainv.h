@@ -180,9 +180,14 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 		L.m_idx[j].swap(curr_nnzs);
 
 		// Add to m_list if needed
-		for (int i : extra) {
-			L.m_list[i].insert(j);
-		}
+		parallel_for(blocked_range<size_t>(0, extra.size(), 100),
+			[&](const blocked_range<size_t>& r) {
+				for (int id = r.begin(); id != r.end(); id++) {
+					int i = extra[id];
+					L.m_list[i].insert(j);
+				}
+			}
+		);
 	};
 
 	auto update_schur_cleanup = [&](int j) {
@@ -306,20 +311,21 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			//[a * zk + c * z_k+1, b * zk + d * zk+1]
 			
 			el_type det = Di[0][0] * Di[1][1] - Di[0][1] * Di[1][0];
-			parallel_for(blocked_range<size_t>(0, pvt_idx.size(), 100),
-				[&](const blocked_range<size_t>& r) {
-					for (int id = r.begin(); id != r.end(); id++) {
-						int j = pvt_idx[id];
-						if (j <= k+1) continue;
-						el_type DinvZ[2];
-						DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
-						DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
+			parallel_for_each(pvt_idx.begin(), pvt_idx.end(),
+				[&](int j) {
+					if (j <= k+1) return;
+					el_type DinvZ[2];
+					DinvZ[0] =  A1[j] * Di[1][1] - Ar[j] * Di[0][1], 
+					DinvZ[1] = -A1[j] * Di[1][0] + Ar[j] * Di[0][0];
 
-						update_schur(-DinvZ[0] / det, j, k);
-						update_schur(-DinvZ[1] / det, j, k+1);
-					}
+					update_schur(-DinvZ[0] / det, j, k);
+					update_schur(-DinvZ[1] / det, j, k+1);
 				}
 			);
+
+			for (int j : pvt_idx) {
+				update_schur_cleanup(j);
+			}
 
 			if (k/period > lastT) {
 				apply_dropping_rules(pvt_idx, k+1);
@@ -348,17 +354,18 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 				D[j] = A1[j];
 			}
 
-			parallel_for(blocked_range<size_t>(0, A1_idx.size(), 100),
-				[&](const blocked_range<size_t>& r) {
-					for (int id = r.begin(); id != r.end(); id++) {
-						int j = A1_idx[id];
-						if (j <= k) continue;
+			parallel_for_each(A1_idx.begin(), A1_idx.end(),
+				[&](int j) {
+					if (j <= k) return;
 
-						// Compute new schur complement
-						update_schur(-A1[j] / A1[k], j, k);
-					}
+					// Compute new schur complement
+					update_schur(-A1[j] / A1[k], j, k);
 				}
 			);
+
+			for (int j : A1_idx) {
+				update_schur_cleanup(j);
+			}
 
 			if (k/period > lastT) {
 				apply_dropping_rules(A1_idx, k);
