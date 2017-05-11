@@ -108,10 +108,7 @@ const double droptol_max = 0.5;
 	\param tol a parameter to control agressiveness of dropping. Elements less than tol*norm(v) are dropped.
 */
 template <class el_type>
-inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double& tol, int keep, bool absolute = false) { 
-	static vector<el_type> work;
-	static vector<int> nnzs;
-
+inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double& tol, int keep, vector<int>* dropped = nullptr, bool absolute = false) { 
 	//determine dropping tolerance. all elements with value less than tolerance = tol * norm(v) is dropped.
 	double mult = 1.0;
 	if (!absolute) {
@@ -120,17 +117,20 @@ inline void drop_tol(vector<el_type>& vals, vector<int>& curr_nnzs, const double
 	double deps = std::numeric_limits<double>::epsilon();
 	el_type tolerance = std::max(deps, std::min(droptol_max, tol * mult));
 
-	work.clear();
-	nnzs.clear();
-	assert(vals.size() == curr_nnzs.size());
-	for (int i = 0; i < curr_nnzs.size(); i++) {
-		if (curr_nnzs[i] != keep && std::abs(vals[i]) <= tolerance) continue;
-		work.push_back(vals[i]);
-		nnzs.push_back(curr_nnzs[i]);
-	}
+	vector<el_type> work = vals;
+	vector<int> nnzs = curr_nnzs;
+	vals.clear();
+	curr_nnzs.clear();
 
-	vals.swap(work);
-	curr_nnzs.swap(nnzs);
+	assert(vals.size() == curr_nnzs.size());
+	for (int i = 0; i < nnzs.size(); i++) {
+		if (nnzs[i] != keep && std::abs(work[i]) <= tolerance) {
+			if (dropped) dropped->push_back(nnzs[i]);
+			continue;
+		}
+		vals.push_back(work[i]);
+		curr_nnzs.push_back(nnzs[i]);
+	}
 }
 
 // PRECONDITION: a and b have sorted indices
@@ -181,10 +181,11 @@ el_type sparse_dot_prod(const col_wrapper<el_type>& a, const col_wrapper<el_type
 
 // PRECONDITION: a and b have sorted indices
 template<class el_type>
-int sparse_vec_add(el_type c0, const col_wrapper<el_type>& a, el_type c1, const col_wrapper<el_type>& b, vector<el_type>& val, vector<int>& ptr) {
+int sparse_vec_add(el_type c0, const col_wrapper<el_type>& a, el_type c1, const col_wrapper<el_type>& b, vector<el_type>& val, vector<int>& ptr, vector<int>* extra = nullptr) {
 	val.clear();
 	ptr.clear();
-
+	if (extra) extra->clear();
+	// extra contains stuff in b but not a.
 #ifdef USE_BLAS
 #else
 	int i = 0, j = 0;
@@ -205,6 +206,7 @@ int sparse_vec_add(el_type c0, const col_wrapper<el_type>& a, el_type c1, const 
 				res = c1 * b.val[j];
 				res_idx = b.ptr[j];
 				j++;
+				if (extra) extra->push_back(res_idx);
 			}
 		} else if (i < a.len) {
 			res = c0 * a.val[i];
@@ -214,6 +216,7 @@ int sparse_vec_add(el_type c0, const col_wrapper<el_type>& a, el_type c1, const 
 			res = c1 * b.val[j];
 			res_idx = b.ptr[j];
 			j++;
+			if (extra) extra->push_back(res_idx);
 		}
 
 		val.push_back(res);

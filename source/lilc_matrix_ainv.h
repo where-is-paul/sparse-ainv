@@ -22,10 +22,6 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	//---------------------------- initialize temporary variables ------------------------------//
 	const int ncols = n_cols(); //number of cols in A.
 
-	elt_vector_type work(ncols, 0);
-	idx_vector_type curr_nnzs;
-	curr_nnzs.reserve(ncols); //reserves space for worse case (entire col is non-zero)
-	
 	vector<int> p(ncols, 0), pinv(ncols, 0);
 	for (int k = 0; k < ncols; k++) {
 		p[k] = k;
@@ -166,7 +162,7 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 
 		// drop elements of col k
 		q.erase(k);
-		drop_tol(L.m_x[k], L.m_idx[k], par.tol, k, true);
+		drop_tol(L.m_x[k], L.m_idx[k], par.tol, k, nullptr, true);
 		
 		// increase non-zero count of L
 		count += static_cast<int>(L.m_x[k].size());
@@ -175,14 +171,16 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 	auto update_schur = [&](el_type coef, int j, int k) {
 		col_wrapper<el_type> lk(L.m_x[k].data(), L.m_idx[k].data(), L.m_x[k].size()),
 							 lj(L.m_x[j].data(), L.m_idx[j].data(), L.m_x[j].size());
-
-		sparse_vec_add(el_type(1.0), lj, coef, lk, work, curr_nnzs);
+	
+		vector<int> curr_nnzs, extra;
+		vector<el_type> work;
+		sparse_vec_add(el_type(1.0), lj, coef, lk, work, curr_nnzs, &extra);
 
 		L.m_x[j].swap(work);
 		L.m_idx[j].swap(curr_nnzs);
 
 		// Add to m_list if needed
-		for (int i : L.m_idx[j]) {
+		for (int i : extra) {
 			L.m_list[i].insert(j);
 		}
 
@@ -209,20 +207,13 @@ void lilc_matrix<el_type> :: ainv(lilc_matrix<el_type>& L, block_diag_matrix<el_
 			// Apply dropping rules to schur complement
 			if (i <= k) continue;
 
-			curr_nnzs = L.m_idx[i];
-			drop_tol(L.m_x[i], L.m_idx[i], tol, i, true);
+			vector<int> dropped;
+			drop_tol(L.m_x[i], L.m_idx[i], tol, i, &dropped, true);
 			
-			for (int j : L.m_idx[i]) {
-				seen1[j] = true;
+			for (int j : dropped) {
+				L.m_list[j].erase(i);
 			}
-			for (int j : curr_nnzs) {
-				if (!seen1[j]) {
-					L.m_list[j].erase(i);
-				}
-				seen1[j] = false;
-			}
-			curr_nnzs.clear();
-
+			
 			// Fix ordering
 			q.erase(i);
 			num_nz[i] = static_cast<int>(L.m_x[i].size());
