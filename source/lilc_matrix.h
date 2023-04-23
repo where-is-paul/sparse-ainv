@@ -381,8 +381,12 @@ public:
 #include <lilc_matrix_find_root.h>
 #include <lilc_matrix_sym_rcm.h>
 #include <lilc_matrix_sym_amd.h>
+#if ENABLE_METIS
 #include <lilc_matrix_sym_metis.h>
+#endif
+#if ENABLE_MC64
 #include <lilc_matrix_sym_mc64.h>
+#endif
 #include <lilc_matrix_sym_perm.h>
 #include <lilc_matrix_sym_equil.h>
 #include <lilc_matrix_ainv_helpers.h>

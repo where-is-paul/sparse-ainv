@@ -342,10 +342,12 @@ class solver {
 						A.sym_rcm(perm);
 						perm_name = "RCM";
 						break;
+#if ENABLE_METIS
 					case reordering_type::METIS:
 						A.sym_metis(perm);
 						perm_name = "METIS";
 						break;
+#endif
 #if ENABLE_MC64
 					case reordering_type::MC64:
 						A.sym_mc64(perm);
