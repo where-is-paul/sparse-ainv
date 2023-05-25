@@ -28,9 +28,9 @@ public:
   idx_vector_type col_r_nnzs; ///<Row indices of non-zeros in the new column r.
 
   elt_vector_type col_k; ///<Non-zero values in the new column k (order
-                         ///dependent on col_k_nnzs).
+                         /// dependent on col_k_nnzs).
   elt_vector_type col_r; ///<Non-zero values in the new column r (order
-                         ///dependent on col_r_nnzs).
+                         /// dependent on col_r_nnzs).
 
   idx_vector_type row_k; ///<Column indices of non-zeros in the new row k.
   idx_vector_type row_r; ///<Column indices of non-zeros in the new row r.

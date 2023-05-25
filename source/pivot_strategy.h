@@ -2,6 +2,7 @@
 #define _PIVOT_STRATEGY_H_
 
 #include <cfloat>
+#include <lilc_matrix_ainv_helpers.h>
 #include <set_unioner.h>
 
 using std::vector;

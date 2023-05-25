@@ -31,10 +31,10 @@ DEFINE_string(pivot, "bunch",
               " during the factorization. Choices are 'wmn' and 'bunch'. The "
               "default is 'bunch'.");
 
-DEFINE_string(
-    reordering, "amd",
-    "Determines what sort of preordering will be used"
-    " on the matrix. Choices are 'amd', 'rcm', 'metis', 'mc64', and 'none'.");
+DEFINE_string(reordering, "amd",
+              "Determines what sort of preordering will be used"
+              " on the matrix. Choices are 'amd', 'rcm', 'metis', 'mc64', "
+              "'matching', and 'none'.");
 
 DEFINE_string(
     equil, "bunch",

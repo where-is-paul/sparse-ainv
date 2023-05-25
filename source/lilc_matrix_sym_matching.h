@@ -1,87 +1,135 @@
 #ifndef _LILC_MATRIX_SYM_MC64_H_
 #define _LILC_MATRIX_SYM_MC64_H_
 
+#include <algorithm>
+#include <map>
+#include <queue>
+#include <set>
 #include <vector>
 
-namespace {
+class MinCostMaxFlow {
+public:
+  constexpr static double INF = 1e18;
+  constexpr static double EPS = 1e-2;
 
-typedef int ll;
-const int N = 100, M = 100, INF = 0x3f3f3f3f;
-// data structures and helper functions common to all flow routines
-int par[N], first[N], nxt[2 * M], ep[2 * M], m;
-ll flo[2 * M], cap[2 * M], cost[2 * M];
-void init() {
-  m = 0;
-  memset(first, -1, sizeof first);
-  memset(flo, 0, sizeof flo);
-}
-void add_edge(int a, int b, ll c = 1,
-              ll p = 0) { // a,b - nodes, c, p - cap, price
-  nxt[m] = first[ep[m] = a], first[ep[m]] = m, cap[m] = c, cost[m] = p, ++m;
-  nxt[m] = first[ep[m] = b], first[ep[m]] = m, cap[m] = 0, cost[m] = -p, ++m;
-}
-
-// Minimum cost maximum flow, assuming there are no negative cost cycles
-// USAGE: 1) init(); 2) add edges, 3) mcf_pot_init(numV) and 4)
-// ll price=0,flow=0; while (ll df = mcf_update(s, t, price, numV)) flow += df;
-//!
-//! for sparse graphs, may help to change Dijkstra from O(N^2) to O(M*lgN)
-//! code is provided in comments
-
-bool vis[N];
-ll pot[N], dist[N];
-struct dsort {
-  bool operator()(int a, int b) {
-    return (dist[a] == dist[b]) ? (a < b) : (dist[a] < dist[b]);
+  // There's extra allocation here because we use 2 * E as a proxy for
+  // the number of vertices. TODO: Optimize this
+  MinCostMaxFlow(const std::vector<double> &weights,
+                 const std::vector<int> &leftEnd,
+                 const std::vector<int> &rightEnd)
+      : E(leftEnd.size()), par(2 * E), first(2 * E, -1), nxt(2 * E), ep(2 * E),
+        m(0), flow(2 * E), capacity(2 * E), cost(2 * E), potential(2 * E) {
+    for (size_t i = 0; i < weights.size(); i++) {
+      add_edge(leftEnd[i], rightEnd[i], weights[i]);
+    }
+    assert(m == 2 * E);
   }
-};
-void mcf_pot_init(int s, int n) {
-  memset(pot, 0, sizeof pot);
-  // if all edge costs >= 0, we can safely return before the Bellman-Ford here
-  for (int k = 1; k < n; ++k)
-    for (int e = 0; e < m; ++e)
-      if (cap[e])
-        pot[ep[e ^ 1]] = std::min(pot[ep[e ^ 1]], pot[ep[e]] + cost[e]);
-}
-ll mcf_update(int s, int t, ll &price, int n) {
-  memset(vis, 0, sizeof vis);
-  memset(dist, INF, sizeof dist);
-  dist[s] = 0;
-  std::set<int, dsort> q;
-  q.insert(s);
-  while (q.size() > 0) {
-    int u = *q.begin();
-    q.erase(q.begin());
-    if (vis[u] == 1)
-      continue;
-    vis[u] = 1;
-    for (int e = first[u]; e != -1; e = nxt[e]) {
-      int v = ep[e ^ 1];
-      if (flo[e] < cap[e] && dist[v] > dist[u] + pot[u] - pot[v] + cost[e]) {
-        q.erase(v);
-        dist[v] = dist[u] + pot[u] - pot[v] + cost[e], par[v] = e;
-        q.insert(v);
+
+  int mcf_update(int s, int t, double &price) {
+    dist.clear();
+    inqueue.clear();
+
+    dist[s] = 0.0;
+    std::queue<int> q({s});
+    while (!q.empty()) {
+      int u = q.front();
+      q.pop();
+      inqueue.erase(u);
+
+      // std::cerr << "Visiting " << u << std::endl;
+
+      assert(dist.count(u));
+      for (int e = first[u]; e != -1; e = nxt[e]) {
+        // std::cerr << ep[e] << " " << ep[e^1] << " " << e << " " << dist[u] +
+        // cost[e] << std::endl;
+        int v = ep[e ^ 1];
+
+        double dv = dist.count(v) ? dist[v] : INF;
+        double du = dist[u]; // We know for sure u has dist
+        if (flow[e] < capacity[e] &&
+            // dv > du + cost[e]) {
+            dv >= (1 + EPS) * (du + cost[e]) + EPS) {
+          dist[v] = du + cost[e];
+          par[v] = e;
+          if (!inqueue.count(v)) {
+            inqueue.insert(v);
+            q.push(v);
+          }
+        }
       }
     }
-  }
-  if (dist[t] >= INF)
-    return 0;
-  ll df = INF;
-  for (int e, i = t; i != s; i = ep[e])
-    e = par[i], df = std::min(df, cap[e] - flo[e]);
-  for (int e, i = t; i != s; i = ep[e])
-    e = par[i], flo[e] += df, flo[e ^ 1] -= df, price += df * cost[e];
-  for (int i = 0; i < n; ++i)
-    pot[i] = std::min(INF, dist[i] + pot[i]);
-  return df;
-}
 
-std::vector<int> weighted_matching(const std::vector<double> &edge_weights,
-                                   const std::vector<int> &edge_u,
-                                   const std::vector<int> &edge_v) {
-  return std::vector<int>();
-}
-}
+    if (!dist.count(t)) {
+      return 0;
+    }
+
+    std::cerr << "Found " << t << " in distance " << dist[t] << std::endl;
+
+    double df = INF;
+    int counter = 0;
+    for (int e, i = t; i != s; i = ep[e]) {
+      std::cerr << "Backtracking flow " << i << " " << ep[par[i]] << " " << s
+                << " " << t << std::endl;
+      if (counter++ > 10)
+        throw std::runtime_error("test");
+      e = par[i];
+      df = std::min(df, capacity[e] - flow[e]);
+    }
+    for (int e, i = t; i != s; i = ep[e]) {
+      // std::cerr << "Adding flow " << i << " " << par[i] << std::endl;
+      e = par[i];
+      flow[e] += df;
+      flow[e ^ 1] -= df;
+      price += df * cost[e];
+    }
+    // throw std::runtime_error("test");
+    return df;
+  }
+
+  std::vector<std::pair<int, int>> run_flow(int source, int sink) {
+    double price = 0;
+    int nflow = 0;
+    while (int df = mcf_update(source, sink, price)) {
+      nflow += df;
+      std::cerr << "Added delta flow " << df << " " << nflow << std::endl;
+    }
+    std::cerr << "Final flow value: " << nflow << std::endl;
+    // Extract out edges
+    std::vector<std::pair<int, int>> edges;
+    for (size_t i = 0; i < flow.size(); i++) {
+      if (flow[i] > 0) {
+        edges.push_back({ep[i], ep[i ^ 1]});
+      }
+    }
+
+    return edges;
+  }
+
+private:
+  int m, N, E;
+  std::vector<int> par, first, nxt, ep;
+  std::vector<double> flow, capacity, cost, potential;
+  std::map<int, double> dist;
+  std::set<int> inqueue;
+
+  void add_edge(int a, int b, double c) {
+    // std::cerr << "Adding edge " << a << " " << b << " with cost " << c <<
+    // std::endl;
+    ep[m] = a;
+    nxt[m] = first[a];
+    first[a] = m;
+    capacity[m] = 1;
+    cost[m] = c;
+    ++m;
+
+    ep[m] = b;
+    nxt[m] = first[b];
+    first[b] = m;
+    capacity[m] = 0;
+    cost[m] = -c;
+    ++m;
+  }
+};
 
 // Change include file above to change support to floats, complex, complex
 // doubles, etc.
@@ -92,13 +140,63 @@ inline std::vector<double> lilc_matrix<>::sym_matching(std::vector<int> &perm) {
 
   to_csc(row_val, row_ind, col_ptr);
 
-  // Assign permutation matrix
-  perm.resize(m_n_cols);
-  for (int i = 0; i < m_n_cols; i++) {
-    perm[i] = i;
+  std::vector<int> node_u, node_v;
+  std::vector<double> weights;
+
+  auto tform = [](double x) { return exp(x); };
+
+  assert(col_ptr.size() == m_n_cols + 1);
+  // Add a small diagonal
+  std::vector<bool> has_diag(m_n_cols);
+  for (int i = 0; i < col_ptr.size() - 1; i++) {
+    for (int j = col_ptr[i]; j < col_ptr[i + 1]; j++) {
+      // Apply transformations here to weight as needed
+      weights.push_back(tform(row_val[node_u.size()]));
+      node_u.push_back(i);
+      node_v.push_back(m_n_cols + row_ind[j]);
+      if (i == row_ind[j]) {
+        has_diag[i] = true;
+      }
+    }
   }
 
-  // Return scaling factors
+  // Add some small diagonal elements
+  for (int i = 0; i < m_n_cols; i++) {
+    if (!has_diag[i]) {
+      weights.push_back(tform(0));
+      node_u.push_back(i);
+      node_v.push_back(m_n_cols + i);
+    }
+  }
+
+  // Now add a sink and a source that connects to the left and right
+  int source = 2 * m_n_cols, sink = 2 * m_n_cols + 1;
+  for (int i = 0; i < 2 * m_n_cols; i++) {
+    weights.push_back(tform(0));
+    if (i < m_n_cols) {
+      node_u.push_back(source);
+      node_v.push_back(i);
+    } else {
+      node_u.push_back(i);
+      node_v.push_back(sink);
+    }
+  }
+
+  MinCostMaxFlow flow(weights, node_u, node_v);
+  auto flow_edges = flow.run_flow(source, sink);
+
+  // Assign permutation matrix
+  perm.resize(m_n_cols);
+  for (const auto &e : flow_edges) {
+    if (std::max(e.first, e.second) < 2 * m_n_cols) {
+      int u = e.first % m_n_cols;
+      int v = e.second % m_n_cols;
+      perm[u] = v;
+      std::cerr << "Matched edge " << u << " " << v << std::endl;
+    }
+  }
+
+  // Return scaling factors (TODO)
   std::vector<double> res(m_n_cols, 1);
   return res;
 }

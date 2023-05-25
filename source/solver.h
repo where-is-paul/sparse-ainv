@@ -157,12 +157,12 @@ public:
   int dropping_type; ///<Set to 0 for relative dropping, 1 for absolute
 
   int equil_type; ///<The equilibration method used. Set to 1 for max-norm
-                  ///equilibriation.
+                  /// equilibriation.
 
   int msg_lvl;    ///<Controls the amount of output to stdout.
   int solve_type; //<The type of solver used to solve the right hand side.
   bool has_rhs;   ///<Set to true if we have a right hand side that we expect to
-                  ///solve.
+                  /// solve.
   bool save_sol;  ///<Set to true if we want to save the solution to a file.
 
   vector<el_type> rhs;     ///<The right hand side we'll solve for.
@@ -185,7 +185,9 @@ public:
   */
   void load(std::string filename) {
     bool result = A.load(filename);
-    assert(result);
+    if (!result) {
+      printf("File loading error. (Is the path correct?)");
+    }
     if (msg_lvl)
       printf("A is %d by %d with %d non-zeros.\n", A.n_rows(), A.n_cols(),
              A.nnz());
@@ -343,7 +345,7 @@ public:
         A.sym_equil(scale);
         perm.clear();
 
-        equil_name = "MATCHING";
+        equil_name = "MinCostFlow";
       }
 
       dif = clock() - start;
@@ -367,7 +369,7 @@ public:
         break;
       case reordering_type::MATCHING:
         A.sym_matching(perm);
-        perm_name = "MATCHING";
+        perm_name = "MinCostFlow";
         break;
 #if ENABLE_METIS
       case reordering_type::METIS:

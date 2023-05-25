@@ -68,19 +68,19 @@ public:
   el_type eps;   ///<Machine epsilon for el_type.
 
   vector<idx_vector_type> m_idx; ///<The row/col indices. The way m_idx is used
-                                 ///depends on whether the matrix is in LIL-C or
-                                 ///LIL-R.
-  vector<elt_vector_type> m_x;   ///<The values of the nonzeros in the matrix.
+  /// depends on whether the matrix is in LIL-C or
+  /// LIL-R.
+  vector<elt_vector_type> m_x; ///<The values of the nonzeros in the matrix.
 
   // vector<idx_vector_type> m_list;
   vector<dense_hash_set<int>> m_list;
 
   block_diag_matrix<el_type> S; ///<A diagonal scaling matrix S such that SAS
-                                ///will be equilibriated in the max-norm (i.e.
-                                ///every row/column has norm 1). S is
-                                ///constructed after running the sym_equil()
-                                ///function, after which SAS will be stored in
-                                ///place of A.
+                                /// will be equilibriated in the max-norm (i.e.
+  /// every row/column has norm 1). S is
+  /// constructed after running the sym_equil()
+  /// function, after which SAS will be stored in
+  /// place of A.
 
 public:
   /*! \brief Constructor for a column oriented list-of-lists (LIL) matrix. Space
